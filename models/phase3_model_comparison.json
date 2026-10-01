@@ -1,0 +1,246 @@
+{
+  "phase": 3,
+  "components": {
+    "patient_risk": {
+      "task": "patient_risk_classification",
+      "averaging_note": "Primary multiclass metrics use macro averaging (unweighted mean over Low/Medium/High). Weighted averages are also stored.",
+      "test_size": 0.2,
+      "seed": 42,
+      "n_train": 800,
+      "n_test": 200,
+      "all_models": [
+        {
+          "model": "logistic_regression",
+          "accuracy": 0.685,
+          "precision_macro": 0.6340449214867819,
+          "recall_macro": 0.688273041627876,
+          "f1_macro": 0.6443024386632613,
+          "precision_weighted": 0.7160484197972571,
+          "recall_weighted": 0.685,
+          "f1_weighted": 0.6865973126583684,
+          "recall_high": 0.625,
+          "confusion_matrix": [
+            [
+              64,
+              9,
+              0
+            ],
+            [
+              21,
+              58,
+              24
+            ],
+            [
+              1,
+              8,
+              15
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ],
+          "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.74      0.88      0.81        73\n      Medium       0.77      0.56      0.65       103\n        High       0.38      0.62      0.48        24\n\n    accuracy                           0.69       200\n   macro avg       0.63      0.69      0.64       200\nweighted avg       0.72      0.69      0.69       200\n"
+        },
+        {
+          "model": "random_forest",
+          "accuracy": 0.81,
+          "precision_macro": 0.863457643274157,
+          "recall_macro": 0.754536655288085,
+          "f1_macro": 0.7903100518592078,
+          "precision_weighted": 0.8202108900274038,
+          "recall_weighted": 0.81,
+          "f1_weighted": 0.8079763985435287,
+          "recall_high": 0.5833333333333334,
+          "confusion_matrix": [
+            [
+              61,
+              12,
+              0
+            ],
+            [
+              16,
+              87,
+              0
+            ],
+            [
+              0,
+              10,
+              14
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ],
+          "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.79      0.84      0.81        73\n      Medium       0.80      0.84      0.82       103\n        High       1.00      0.58      0.74        24\n\n    accuracy                           0.81       200\n   macro avg       0.86      0.75      0.79       200\nweighted avg       0.82      0.81      0.81       200\n"
+        },
+        {
+          "model": "xgboost",
+          "accuracy": 0.84,
+          "precision_macro": 0.8916157916157917,
+          "recall_macro": 0.763301488082044,
+          "f1_macro": 0.8034650034650035,
+          "precision_weighted": 0.8518321123321124,
+          "recall_weighted": 0.84,
+          "f1_weighted": 0.8358138348138349,
+          "recall_high": 0.5416666666666666,
+          "confusion_matrix": [
+            [
+              61,
+              12,
+              0
+            ],
+            [
+              9,
+              94,
+              0
+            ],
+            [
+              0,
+              11,
+              13
+            ]
+          ],
+          "confusion_matrix_labels": [
+            "Low",
+            "Medium",
+            "High"
+          ],
+          "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+          "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
+        }
+      ],
+      "selected": {
+        "model": "xgboost",
+        "accuracy": 0.84,
+        "precision_macro": 0.8916157916157917,
+        "recall_macro": 0.763301488082044,
+        "f1_macro": 0.8034650034650035,
+        "precision_weighted": 0.8518321123321124,
+        "recall_weighted": 0.84,
+        "f1_weighted": 0.8358138348138349,
+        "recall_high": 0.5416666666666666,
+        "confusion_matrix": [
+          [
+            61,
+            12,
+            0
+          ],
+          [
+            9,
+            94,
+            0
+          ],
+          [
+            0,
+            11,
+            13
+          ]
+        ],
+        "confusion_matrix_labels": [
+          "Low",
+          "Medium",
+          "High"
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+        "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
+      },
+      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\patient_risk\\best_pipeline.joblib"
+    },
+    "waiting_time": {
+      "task": "waiting_time_regression",
+      "leakage_note": "Excluded target average_waiting_time_minutes from features. Used chronological holdout (no shuffle). Same-day OPD/staff features retained as operational drivers of waiting time.",
+      "test_size": 0.2,
+      "seed": 42,
+      "n_train": 293,
+      "n_test": 73,
+      "train_end_date": "2024-10-19",
+      "test_start_date": "2024-10-20",
+      "all_models": [
+        {
+          "model": "linear_regression",
+          "mae": 2.9498834930606814,
+          "mse": 13.332443615538859,
+          "rmse": 3.6513618850421903,
+          "r2": 0.8336017335665595,
+          "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+        },
+        {
+          "model": "random_forest",
+          "mae": 3.487965306475772,
+          "mse": 18.119259667426533,
+          "rmse": 4.25667237022378,
+          "r2": 0.7738589050394966
+        },
+        {
+          "model": "xgboost",
+          "mae": 3.577267513536427,
+          "mse": 20.0077183867888,
+          "rmse": 4.472998813635971,
+          "r2": 0.7502896130031322
+        }
+      ],
+      "selected": {
+        "model": "linear_regression",
+        "mae": 2.9498834930606814,
+        "mse": 13.332443615538859,
+        "rmse": 3.6513618850421903,
+        "r2": 0.8336017335665595,
+        "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+      },
+      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\waiting_time\\best_pipeline.joblib"
+    },
+    "opd_forecast": {
+      "task": "opd_forecasting",
+      "model": "prophet",
+      "split": "chronological",
+      "holdout_days": 30,
+      "n_train": 336,
+      "n_test": 30,
+      "train_end_date": "2024-12-01",
+      "test_start_date": "2024-12-02",
+      "test_end_date": "2024-12-31",
+      "metrics_holdout": {
+        "mae": 93.20342894285825,
+        "rmse": 102.09294085336617
+      },
+      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\prophet_model.joblib",
+      "holdout_predictions_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\holdout_predictions.csv",
+      "note": "Holdout metrics are from a model fit on data before the holdout. Saved artifact is refit on the full series for future 7-day forecasts."
+    },
+    "anomaly_detection": {
+      "task": "hospital_anomaly_detection",
+      "model": "isolation_forest",
+      "contamination": 0.05,
+      "n_rows": 366,
+      "n_anomalies_flagged": 19,
+      "anomaly_rate": 0.05191256830601093,
+      "feature_columns": [
+        "opd_patients",
+        "emergency_patients",
+        "bed_occupancy_percentage",
+        "icu_occupancy_percentage",
+        "average_waiting_time_minutes"
+      ],
+      "score_note": "anomaly_score is -decision_function (higher = more anomalous). anomaly_flag=1 means IsolationForest predict==-1.",
+      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\isolation_forest.joblib",
+      "scored_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\scored_operations.csv",
+      "example_anomaly_dates": [
+        "2024-01-01",
+        "2024-01-02",
+        "2024-01-03",
+        "2024-01-04",
+        "2024-01-05",
+        "2024-01-06",
+        "2024-01-07",
+        "2024-01-13",
+        "2024-03-02",
+        "2024-03-26"
+      ]
+    }
+  },
+  "errors": {}
+}

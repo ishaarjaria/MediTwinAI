@@ -1,0 +1,18 @@
+{
+  "task": "opd_forecasting",
+  "model": "prophet",
+  "split": "chronological",
+  "holdout_days": 30,
+  "n_train": 336,
+  "n_test": 30,
+  "train_end_date": "2024-12-01",
+  "test_start_date": "2024-12-02",
+  "test_end_date": "2024-12-31",
+  "metrics_holdout": {
+    "mae": 93.20342894285825,
+    "rmse": 102.09294085336617
+  },
+  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\prophet_model.joblib",
+  "holdout_predictions_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\holdout_predictions.csv",
+  "note": "Holdout metrics are from a model fit on data before the holdout. Saved artifact is refit on the full series for future 7-day forecasts."
+}

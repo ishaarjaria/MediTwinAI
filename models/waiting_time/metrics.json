@@ -1,0 +1,43 @@
+{
+  "task": "waiting_time_regression",
+  "leakage_note": "Excluded target average_waiting_time_minutes from features. Used chronological holdout (no shuffle). Same-day OPD/staff features retained as operational drivers of waiting time.",
+  "test_size": 0.2,
+  "seed": 42,
+  "n_train": 293,
+  "n_test": 73,
+  "train_end_date": "2024-10-19",
+  "test_start_date": "2024-10-20",
+  "all_models": [
+    {
+      "model": "linear_regression",
+      "mae": 2.9498834930606814,
+      "mse": 13.332443615538859,
+      "rmse": 3.6513618850421903,
+      "r2": 0.8336017335665595,
+      "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+    },
+    {
+      "model": "random_forest",
+      "mae": 3.487965306475772,
+      "mse": 18.119259667426533,
+      "rmse": 4.25667237022378,
+      "r2": 0.7738589050394966
+    },
+    {
+      "model": "xgboost",
+      "mae": 3.577267513536427,
+      "mse": 20.0077183867888,
+      "rmse": 4.472998813635971,
+      "r2": 0.7502896130031322
+    }
+  ],
+  "selected": {
+    "model": "linear_regression",
+    "mae": 2.9498834930606814,
+    "mse": 13.332443615538859,
+    "rmse": 3.6513618850421903,
+    "r2": 0.8336017335665595,
+    "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+  },
+  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\waiting_time\\best_pipeline.joblib"
+}

@@ -1,0 +1,30 @@
+{
+  "task": "hospital_anomaly_detection",
+  "model": "isolation_forest",
+  "contamination": 0.05,
+  "n_rows": 366,
+  "n_anomalies_flagged": 19,
+  "anomaly_rate": 0.05191256830601093,
+  "feature_columns": [
+    "opd_patients",
+    "emergency_patients",
+    "bed_occupancy_percentage",
+    "icu_occupancy_percentage",
+    "average_waiting_time_minutes"
+  ],
+  "score_note": "anomaly_score is -decision_function (higher = more anomalous). anomaly_flag=1 means IsolationForest predict==-1.",
+  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\isolation_forest.joblib",
+  "scored_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\scored_operations.csv",
+  "example_anomaly_dates": [
+    "2024-01-01",
+    "2024-01-02",
+    "2024-01-03",
+    "2024-01-04",
+    "2024-01-05",
+    "2024-01-06",
+    "2024-01-07",
+    "2024-01-13",
+    "2024-03-02",
+    "2024-03-26"
+  ]
+}

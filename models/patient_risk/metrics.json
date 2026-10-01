@@ -1,0 +1,149 @@
+{
+  "task": "patient_risk_classification",
+  "averaging_note": "Primary multiclass metrics use macro averaging (unweighted mean over Low/Medium/High). Weighted averages are also stored.",
+  "test_size": 0.2,
+  "seed": 42,
+  "n_train": 800,
+  "n_test": 200,
+  "all_models": [
+    {
+      "model": "logistic_regression",
+      "accuracy": 0.685,
+      "precision_macro": 0.6340449214867819,
+      "recall_macro": 0.688273041627876,
+      "f1_macro": 0.6443024386632613,
+      "precision_weighted": 0.7160484197972571,
+      "recall_weighted": 0.685,
+      "f1_weighted": 0.6865973126583684,
+      "recall_high": 0.625,
+      "confusion_matrix": [
+        [
+          64,
+          9,
+          0
+        ],
+        [
+          21,
+          58,
+          24
+        ],
+        [
+          1,
+          8,
+          15
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.74      0.88      0.81        73\n      Medium       0.77      0.56      0.65       103\n        High       0.38      0.62      0.48        24\n\n    accuracy                           0.69       200\n   macro avg       0.63      0.69      0.64       200\nweighted avg       0.72      0.69      0.69       200\n"
+    },
+    {
+      "model": "random_forest",
+      "accuracy": 0.81,
+      "precision_macro": 0.863457643274157,
+      "recall_macro": 0.754536655288085,
+      "f1_macro": 0.7903100518592078,
+      "precision_weighted": 0.8202108900274038,
+      "recall_weighted": 0.81,
+      "f1_weighted": 0.8079763985435287,
+      "recall_high": 0.5833333333333334,
+      "confusion_matrix": [
+        [
+          61,
+          12,
+          0
+        ],
+        [
+          16,
+          87,
+          0
+        ],
+        [
+          0,
+          10,
+          14
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.79      0.84      0.81        73\n      Medium       0.80      0.84      0.82       103\n        High       1.00      0.58      0.74        24\n\n    accuracy                           0.81       200\n   macro avg       0.86      0.75      0.79       200\nweighted avg       0.82      0.81      0.81       200\n"
+    },
+    {
+      "model": "xgboost",
+      "accuracy": 0.84,
+      "precision_macro": 0.8916157916157917,
+      "recall_macro": 0.763301488082044,
+      "f1_macro": 0.8034650034650035,
+      "precision_weighted": 0.8518321123321124,
+      "recall_weighted": 0.84,
+      "f1_weighted": 0.8358138348138349,
+      "recall_high": 0.5416666666666666,
+      "confusion_matrix": [
+        [
+          61,
+          12,
+          0
+        ],
+        [
+          9,
+          94,
+          0
+        ],
+        [
+          0,
+          11,
+          13
+        ]
+      ],
+      "confusion_matrix_labels": [
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+      "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
+    }
+  ],
+  "selected": {
+    "model": "xgboost",
+    "accuracy": 0.84,
+    "precision_macro": 0.8916157916157917,
+    "recall_macro": 0.763301488082044,
+    "f1_macro": 0.8034650034650035,
+    "precision_weighted": 0.8518321123321124,
+    "recall_weighted": 0.84,
+    "f1_weighted": 0.8358138348138349,
+    "recall_high": 0.5416666666666666,
+    "confusion_matrix": [
+      [
+        61,
+        12,
+        0
+      ],
+      [
+        9,
+        94,
+        0
+      ],
+      [
+        0,
+        11,
+        13
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "Low",
+      "Medium",
+      "High"
+    ],
+    "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+    "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
+  },
+  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\patient_risk\\best_pipeline.joblib"
+}
