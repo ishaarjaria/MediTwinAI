@@ -88,6 +88,28 @@ rules are simplified for teaching and reproducibility — **not** medical guidel
 
 ## Current phase
 
+**Phase 5:** what-if simulation (current scenario vs simulated scenario).
+
+```bash
+python -m unittest tests.test_what_if
+```
+
+```python
+from src.simulation.what_if import WhatIfSimulator
+from src.twin.hospital_twin import build_twin_from_latest
+
+twin = build_twin_from_latest()
+result = WhatIfSimulator().simulate(
+    twin.get_current_state(),
+    patient_inflow_percent=20,
+)
+print(result.summary_text())
+```
+
+Waiting time is an ML-derived prediction from the trained model.
+Patient load, beds, ICU pressure, medicine consumption, and staff pressure
+are rule-derived. Those rules are not labelled as AI.
+
 **Phase 4:** prediction service + hospital digital twin.
 
 ```bash
