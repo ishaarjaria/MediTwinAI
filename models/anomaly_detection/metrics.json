@@ -1,10 +1,10 @@
 {
   "task": "hospital_anomaly_detection",
   "model": "isolation_forest",
-  "contamination": 0.05,
+  "contamination": 0.02,
   "n_rows": 366,
-  "n_anomalies_flagged": 19,
-  "anomaly_rate": 0.05191256830601093,
+  "n_anomalies_flagged": 8,
+  "anomaly_rate": 0.02185792349726776,
   "feature_columns": [
     "opd_patients",
     "emergency_patients",
@@ -13,18 +13,185 @@
     "average_waiting_time_minutes"
   ],
   "score_note": "anomaly_score is -decision_function (higher = more anomalous). anomaly_flag=1 means IsolationForest predict==-1.",
-  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\isolation_forest.joblib",
-  "scored_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\scored_operations.csv",
+  "model_path": "isolation_forest.joblib",
+  "scored_path": "scored_operations.csv",
+  "evaluation": {
+    "protocol": "Forward chaining: each block is scored by a detector fitted only on earlier days; the injected-spike labels are never used for fitting.",
+    "isolation_forest": [
+      {
+        "tp": 1,
+        "fp": 0,
+        "fn": 3,
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4,
+        "method": "isolation_forest",
+        "contamination": 0.01,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 1,
+        "missed_dates": [
+          "2024-03-04",
+          "2024-05-15",
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 2,
+        "fp": 1,
+        "fn": 2,
+        "precision": 0.6666666666666666,
+        "recall": 0.5,
+        "f1": 0.5714285714285715,
+        "method": "isolation_forest",
+        "contamination": 0.02,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 3,
+        "missed_dates": [
+          "2024-03-04",
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 3,
+        "fp": 18,
+        "fn": 1,
+        "precision": 0.14285714285714285,
+        "recall": 0.75,
+        "f1": 0.24,
+        "method": "isolation_forest",
+        "contamination": 0.03,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 21,
+        "missed_dates": [
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 4,
+        "fp": 55,
+        "fn": 0,
+        "precision": 0.06779661016949153,
+        "recall": 1.0,
+        "f1": 0.12698412698412698,
+        "method": "isolation_forest",
+        "contamination": 0.05,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 59,
+        "missed_dates": [],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      }
+    ],
+    "local_outlier_factor": [
+      {
+        "tp": 3,
+        "fp": 0,
+        "fn": 1,
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571428571428571,
+        "method": "lof",
+        "contamination": 0.01,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 3,
+        "missed_dates": [
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 3,
+        "fp": 24,
+        "fn": 1,
+        "precision": 0.1111111111111111,
+        "recall": 0.75,
+        "f1": 0.19354838709677416,
+        "method": "lof",
+        "contamination": 0.02,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 27,
+        "missed_dates": [
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 3,
+        "fp": 38,
+        "fn": 1,
+        "precision": 0.07317073170731707,
+        "recall": 0.75,
+        "f1": 0.13333333333333333,
+        "method": "lof",
+        "contamination": 0.03,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 41,
+        "missed_dates": [
+          "2024-05-20"
+        ],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      },
+      {
+        "tp": 4,
+        "fp": 44,
+        "fn": 0,
+        "precision": 0.08333333333333333,
+        "recall": 1.0,
+        "f1": 0.15384615384615385,
+        "method": "lof",
+        "contamination": 0.05,
+        "n_days_scored": 306,
+        "n_injected_in_scored": 4,
+        "n_injected_total": 5,
+        "n_flagged": 48,
+        "missed_dates": [],
+        "excluded_dates_no_history": [
+          "2024-01-23"
+        ]
+      }
+    ],
+    "small_sample_warning": "Only 4 injected spikes are scored; precision/recall are indicative, not statistically stable."
+  },
+  "contamination_selection": "chosen by pooled F1 on the forward-chaining evaluation",
+  "in_sample_note": "scored_operations.csv flags are an in-sample scoring of the final model (fit on all days) used only for display; use `evaluation` for accuracy.",
   "example_anomaly_dates": [
-    "2024-01-01",
-    "2024-01-02",
-    "2024-01-03",
-    "2024-01-04",
-    "2024-01-05",
-    "2024-01-06",
-    "2024-01-07",
-    "2024-01-13",
-    "2024-03-02",
-    "2024-03-26"
+    "2024-01-23",
+    "2024-01-26",
+    "2024-02-04",
+    "2024-03-04",
+    "2024-05-15",
+    "2024-05-20",
+    "2024-08-15",
+    "2024-09-19"
   ]
 }

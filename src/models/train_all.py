@@ -14,10 +14,10 @@ from src.models.train_anomaly_detection import train_anomaly_detection
 from src.models.train_opd_forecast import train_opd_forecast
 from src.models.train_patient_risk import train_patient_risk
 from src.models.train_waiting_time import train_waiting_time
-from src.models.utils import ensure_dir, models_dir, save_json
+from src.models.utils import ensure_dir, load_json, models_dir, save_json
 
 
-def train_all() -> dict[str, Any]:
+def train_all(skip: tuple[str, ...] = ()) -> dict[str, Any]:
     summary: dict[str, Any] = {"phase": 3, "components": {}}
     errors: dict[str, str] = {}
 
@@ -29,6 +29,15 @@ def train_all() -> dict[str, Any]:
     ]
 
     for name, fn in steps:
+        if name in skip:
+            # Keep the existing trained model and reuse its saved metrics.
+            metrics_path = models_dir() / name / "metrics.json"
+            if metrics_path.is_file():
+                summary["components"][name] = load_json(metrics_path)
+                print(f"Skipping {name} (reusing {metrics_path.parent.name}/{metrics_path.name})")
+            else:
+                errors[name] = f"Skipped, but {metrics_path} does not exist."
+            continue
         print("\n" + "#" * 64)
         print(f"# Training: {name}")
         print("#" * 64)
@@ -85,12 +94,16 @@ def _print_comparison(summary: dict[str, Any]) -> None:
 
     if "opd_forecast" in comps:
         fc = comps["opd_forecast"]
-        metrics = fc.get("metrics_holdout", {})
-        print("\n[C] OPD Forecasting (Prophet, chronological holdout)")
-        print(
-            f"  Holdout MAE={metrics.get('mae')}  RMSE={metrics.get('rmse')}  "
-            f"holdout_days={fc.get('holdout_days')}"
-        )
+        print("\n[C] OPD Forecasting (chronological validation/test comparison)")
+        for c in fc.get("comparison", []):
+            if "test" in c:
+                print(
+                    f"  - {c['model']}: test MAE={c['test']['mae']:.2f}  "
+                    f"RMSE={c['test']['rmse']:.2f}  R2={c['test']['r2']:.3f}"
+                )
+            else:
+                print(f"  - {c['model']}: skipped ({c.get('skipped_reason')})")
+        print(f"  SELECTED: {fc.get('selected_model')}")
 
     if "anomaly_detection" in comps:
         an = comps["anomaly_detection"]
@@ -107,7 +120,17 @@ def _print_comparison(summary: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    train_all()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Train all MediTwin AI models.")
+    parser.add_argument(
+        "--skip",
+        nargs="*",
+        default=[],
+        choices=["patient_risk", "waiting_time", "opd_forecast", "anomaly_detection"],
+        help="Models to keep as they are (their saved metrics are reused).",
+    )
+    train_all(skip=tuple(parser.parse_args().skip))
 
 
 if __name__ == "__main__":

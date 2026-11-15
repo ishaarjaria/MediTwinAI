@@ -1,0 +1,402 @@
+{
+ "alerts": [],
+ "alerts_unavailable": [],
+ "current": {
+  "admissions": 39,
+  "as_of_date": "2024-12-31",
+  "available_beds": 96,
+  "average_waiting_time": 36.6,
+  "bed_occupancy_percentage": 61.6,
+  "capacity_status": "Normal",
+  "current_opd": 314,
+  "day_of_week": 1,
+  "discharges": 42,
+  "doctors_available": 41,
+  "emergency_cases": 49,
+  "icu_occupancy_percentage": 53.33,
+  "is_holiday": 0,
+  "is_weekend": 0,
+  "medicine_stock": 10723,
+  "month": 12,
+  "notes": [],
+  "nurses_available": 116,
+  "occupied_beds": 154,
+  "occupied_icu_beds": 16,
+  "total_beds": 250,
+  "total_icu_beds": 30
+ },
+ "model_waiting_time": 35.35,
+ "patient_risk": {
+  "In-between": {
+   "level": "Medium",
+   "proba_High": 0.008708,
+   "proba_Low": 0.027069,
+   "proba_Medium": 0.964223
+  },
+  "Several warning signs": {
+   "level": "High",
+   "proba_High": 0.912983,
+   "proba_Low": 1.7e-05,
+   "proba_Medium": 0.087
+  },
+  "Typical, healthy": {
+   "level": "Low",
+   "proba_High": 1.5e-05,
+   "proba_Low": 0.998877,
+   "proba_Medium": 0.001108
+  }
+ },
+ "predicted_day1": {
+  "admissions": 39,
+  "as_of_date": "2025-01-01",
+  "available_beds": 96,
+  "average_waiting_time": 37.26,
+  "bed_occupancy_percentage": 61.6,
+  "capacity_status": "Normal",
+  "current_opd": 331,
+  "day_of_week": 2,
+  "discharges": 42,
+  "doctors_available": 41,
+  "emergency_cases": 49,
+  "icu_occupancy_percentage": 53.33,
+  "is_holiday": 0,
+  "is_weekend": 0,
+  "medicine_stock": 10709,
+  "month": 1,
+  "notes": [
+   "Predicted state is a data-driven software estimate (not IoT live data).",
+   "OPD forecast (XGBoost (calendar + seasonal lags)) for 2025-01-01: 331",
+   "Predicted waiting time (ML): 37.3 min"
+  ],
+  "nurses_available": 116,
+  "occupied_beds": 154,
+  "occupied_icu_beds": 16,
+  "total_beds": 250,
+  "total_icu_beds": 30
+ },
+ "predicted_day7": {
+  "admissions": 39,
+  "as_of_date": "2025-01-07",
+  "available_beds": 95,
+  "average_waiting_time": 41.86,
+  "bed_occupancy_percentage": 62.0,
+  "capacity_status": "Normal",
+  "current_opd": 365,
+  "day_of_week": 1,
+  "discharges": 42,
+  "doctors_available": 41,
+  "emergency_cases": 49,
+  "icu_occupancy_percentage": 53.33,
+  "is_holiday": 0,
+  "is_weekend": 0,
+  "medicine_stock": 10682,
+  "month": 1,
+  "notes": [
+   "Predicted state is a data-driven software estimate (not IoT live data).",
+   "OPD forecast (XGBoost (calendar + seasonal lags)) for 2025-01-07: 365",
+   "Predicted waiting time (ML): 41.9 min"
+  ],
+  "nurses_available": 116,
+  "occupied_beds": 155,
+  "occupied_icu_beds": 16,
+  "total_beds": 250,
+  "total_icu_beds": 30
+ },
+ "whatif_emergency_surge": {
+  "comparisons": [
+   {
+    "current": 402.0,
+    "explanation": "patient_load increases from 402.00 to 438.00 (change +36.00). Source: rule-derived simulation.",
+    "name": "patient_load",
+    "simulated": 438.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 154.0,
+    "explanation": "bed_requirement increases from 154.00 to 199.00 (change +45.00). Source: rule-derived simulation.",
+    "name": "bed_requirement",
+    "simulated": 199.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 61.6,
+    "explanation": "bed_occupancy_percentage increases from 61.60 to 79.60 (change +18.00). Source: rule-derived simulation.",
+    "name": "bed_occupancy_percentage",
+    "simulated": 79.6,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 53.33,
+    "explanation": "icu_pressure_percentage increases from 53.33 to 73.33 (change +20.00). Source: rule-derived simulation.",
+    "name": "icu_pressure_percentage",
+    "simulated": 73.33,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 35.35,
+    "explanation": "expected_waiting_time_minutes increases from 35.35 to 37.64 (change +2.29). Source: ML-derived prediction.",
+    "name": "expected_waiting_time_minutes",
+    "simulated": 37.64,
+    "source": "ML-derived prediction"
+   },
+   {
+    "current": 420.5,
+    "explanation": "medicine_consumption_units increases from 420.50 to 496.20 (change +75.70). Source: rule-derived simulation.",
+    "name": "medicine_consumption_units",
+    "simulated": 496.2,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 10723.0,
+    "explanation": "medicine_stock_units decreases from 10723.00 to 10647.00 (change -76.00). Source: rule-derived simulation.",
+    "name": "medicine_stock_units",
+    "simulated": 10647.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 25.5006,
+    "explanation": "medicine_days_of_cover decreases from 25.50 to 21.46 (change -4.04). Source: rule-derived simulation.",
+    "name": "medicine_days_of_cover",
+    "simulated": 21.4571,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 2.5605,
+    "explanation": "staff_pressure_patients_per_staff increases from 2.56 to 2.79 (change +0.23). Source: rule-derived simulation.",
+    "name": "staff_pressure_patients_per_staff",
+    "simulated": 2.7898,
+    "source": "rule-derived simulation"
+   }
+  ],
+  "shortfalls": [
+   0,
+   0
+  ],
+  "simulated": {
+   "admissions": 50,
+   "as_of_date": "2024-12-31",
+   "available_beds": 51,
+   "average_waiting_time": 37.64,
+   "bed_occupancy_percentage": 79.6,
+   "capacity_status": "Moderate",
+   "current_opd": 314,
+   "day_of_week": 1,
+   "discharges": 42,
+   "doctors_available": 41,
+   "emergency_cases": 74,
+   "icu_occupancy_percentage": 73.33,
+   "is_holiday": 0,
+   "is_weekend": 0,
+   "medicine_stock": 10647,
+   "month": 12,
+   "notes": [
+    "Simulated scenario. Volumes, beds, ICU, medicine, and staffing are rule-derived.",
+    "Waiting time source: ML-derived prediction.",
+    "Emergency cases +50.0% versus baseline."
+   ],
+   "nurses_available": 116,
+   "occupied_beds": 199,
+   "occupied_icu_beds": 22,
+   "total_beds": 250,
+   "total_icu_beds": 30
+  }
+ },
+ "whatif_medicine_delay": {
+  "comparisons": [
+   {
+    "current": 402.0,
+    "explanation": "patient_load stays the same from 402.00 to 402.00 (change +0.00). Source: rule-derived simulation.",
+    "name": "patient_load",
+    "simulated": 402.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 154.0,
+    "explanation": "bed_requirement stays the same from 154.00 to 154.00 (change +0.00). Source: rule-derived simulation.",
+    "name": "bed_requirement",
+    "simulated": 154.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 61.6,
+    "explanation": "bed_occupancy_percentage stays the same from 61.60 to 61.60 (change +0.00). Source: rule-derived simulation.",
+    "name": "bed_occupancy_percentage",
+    "simulated": 61.6,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 53.33,
+    "explanation": "icu_pressure_percentage stays the same from 53.33 to 53.33 (change +0.00). Source: rule-derived simulation.",
+    "name": "icu_pressure_percentage",
+    "simulated": 53.33,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 35.35,
+    "explanation": "expected_waiting_time_minutes stays the same from 35.35 to 35.35 (change +0.00). Source: ML-derived prediction.",
+    "name": "expected_waiting_time_minutes",
+    "simulated": 35.35,
+    "source": "ML-derived prediction"
+   },
+   {
+    "current": 420.5,
+    "explanation": "medicine_consumption_units stays the same from 420.50 to 420.50 (change +0.00). Source: rule-derived simulation.",
+    "name": "medicine_consumption_units",
+    "simulated": 420.5,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 10723.0,
+    "explanation": "medicine_stock_units decreases from 10723.00 to 4289.00 (change -6434.00). Source: rule-derived simulation.",
+    "name": "medicine_stock_units",
+    "simulated": 4289.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 25.5006,
+    "explanation": "medicine_days_of_cover decreases from 25.50 to 10.20 (change -15.30). Source: rule-derived simulation.",
+    "name": "medicine_days_of_cover",
+    "simulated": 10.1998,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 2.5605,
+    "explanation": "staff_pressure_patients_per_staff stays the same from 2.56 to 2.56 (change +0.00). Source: rule-derived simulation.",
+    "name": "staff_pressure_patients_per_staff",
+    "simulated": 2.5605,
+    "source": "rule-derived simulation"
+   }
+  ],
+  "shortfalls": [
+   0,
+   0
+  ],
+  "simulated": {
+   "admissions": 39,
+   "as_of_date": "2024-12-31",
+   "available_beds": 96,
+   "average_waiting_time": 35.35,
+   "bed_occupancy_percentage": 61.6,
+   "capacity_status": "Normal",
+   "current_opd": 314,
+   "day_of_week": 1,
+   "discharges": 42,
+   "doctors_available": 41,
+   "emergency_cases": 49,
+   "icu_occupancy_percentage": 53.33,
+   "is_holiday": 0,
+   "is_weekend": 0,
+   "medicine_stock": 4289,
+   "month": 12,
+   "notes": [
+    "Simulated scenario. Volumes, beds, ICU, medicine, and staffing are rule-derived.",
+    "Waiting time source: ML-derived prediction.",
+    "Medicine stock on hand -60.0% versus baseline."
+   ],
+   "nurses_available": 116,
+   "occupied_beds": 154,
+   "occupied_icu_beds": 16,
+   "total_beds": 250,
+   "total_icu_beds": 30
+  }
+ },
+ "whatif_no_change": {
+  "comparisons": [
+   {
+    "current": 402.0,
+    "explanation": "patient_load stays the same from 402.00 to 402.00 (change +0.00). Source: rule-derived simulation.",
+    "name": "patient_load",
+    "simulated": 402.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 154.0,
+    "explanation": "bed_requirement stays the same from 154.00 to 154.00 (change +0.00). Source: rule-derived simulation.",
+    "name": "bed_requirement",
+    "simulated": 154.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 61.6,
+    "explanation": "bed_occupancy_percentage stays the same from 61.60 to 61.60 (change +0.00). Source: rule-derived simulation.",
+    "name": "bed_occupancy_percentage",
+    "simulated": 61.6,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 53.33,
+    "explanation": "icu_pressure_percentage stays the same from 53.33 to 53.33 (change +0.00). Source: rule-derived simulation.",
+    "name": "icu_pressure_percentage",
+    "simulated": 53.33,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 35.35,
+    "explanation": "expected_waiting_time_minutes stays the same from 35.35 to 35.35 (change +0.00). Source: ML-derived prediction.",
+    "name": "expected_waiting_time_minutes",
+    "simulated": 35.35,
+    "source": "ML-derived prediction"
+   },
+   {
+    "current": 420.5,
+    "explanation": "medicine_consumption_units stays the same from 420.50 to 420.50 (change +0.00). Source: rule-derived simulation.",
+    "name": "medicine_consumption_units",
+    "simulated": 420.5,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 10723.0,
+    "explanation": "medicine_stock_units stays the same from 10723.00 to 10723.00 (change +0.00). Source: rule-derived simulation.",
+    "name": "medicine_stock_units",
+    "simulated": 10723.0,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 25.5006,
+    "explanation": "medicine_days_of_cover stays the same from 25.50 to 25.50 (change +0.00). Source: rule-derived simulation.",
+    "name": "medicine_days_of_cover",
+    "simulated": 25.5006,
+    "source": "rule-derived simulation"
+   },
+   {
+    "current": 2.5605,
+    "explanation": "staff_pressure_patients_per_staff stays the same from 2.56 to 2.56 (change +0.00). Source: rule-derived simulation.",
+    "name": "staff_pressure_patients_per_staff",
+    "simulated": 2.5605,
+    "source": "rule-derived simulation"
+   }
+  ],
+  "shortfalls": [
+   0,
+   0
+  ],
+  "simulated": {
+   "admissions": 39,
+   "as_of_date": "2024-12-31",
+   "available_beds": 96,
+   "average_waiting_time": 35.35,
+   "bed_occupancy_percentage": 61.6,
+   "capacity_status": "Normal",
+   "current_opd": 314,
+   "day_of_week": 1,
+   "discharges": 42,
+   "doctors_available": 41,
+   "emergency_cases": 49,
+   "icu_occupancy_percentage": 53.33,
+   "is_holiday": 0,
+   "is_weekend": 0,
+   "medicine_stock": 10723,
+   "month": 12,
+   "notes": [
+    "Simulated scenario. Volumes, beds, ICU, medicine, and staffing are rule-derived.",
+    "Waiting time source: ML-derived prediction.",
+    "No scenario changes; simulated volumes match the baseline."
+   ],
+   "nurses_available": 116,
+   "occupied_beds": 154,
+   "occupied_icu_beds": 16,
+   "total_beds": 250,
+   "total_icu_beds": 30
+  }
+ }
+}

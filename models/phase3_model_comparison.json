@@ -79,18 +79,18 @@
         },
         {
           "model": "xgboost",
-          "accuracy": 0.84,
-          "precision_macro": 0.8916157916157917,
-          "recall_macro": 0.763301488082044,
-          "f1_macro": 0.8034650034650035,
-          "precision_weighted": 0.8518321123321124,
-          "recall_weighted": 0.84,
-          "f1_weighted": 0.8358138348138349,
+          "accuracy": 0.845,
+          "precision_macro": 0.8945280880686418,
+          "recall_macro": 0.767867698127706,
+          "f1_macro": 0.807420434132763,
+          "precision_weighted": 0.8560599805730936,
+          "recall_weighted": 0.845,
+          "f1_weighted": 0.8407303365008845,
           "recall_high": 0.5416666666666666,
           "confusion_matrix": [
             [
-              61,
-              12,
+              62,
+              11,
               0
             ],
             [
@@ -109,24 +109,24 @@
             "Medium",
             "High"
           ],
-          "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+          "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.85      0.86        73\n      Medium       0.81      0.91      0.86       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.77      0.81       200\nweighted avg       0.86      0.84      0.84       200\n",
           "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
         }
       ],
       "selected": {
         "model": "xgboost",
-        "accuracy": 0.84,
-        "precision_macro": 0.8916157916157917,
-        "recall_macro": 0.763301488082044,
-        "f1_macro": 0.8034650034650035,
-        "precision_weighted": 0.8518321123321124,
-        "recall_weighted": 0.84,
-        "f1_weighted": 0.8358138348138349,
+        "accuracy": 0.845,
+        "precision_macro": 0.8945280880686418,
+        "recall_macro": 0.767867698127706,
+        "f1_macro": 0.807420434132763,
+        "precision_weighted": 0.8560599805730936,
+        "recall_weighted": 0.845,
+        "f1_weighted": 0.8407303365008845,
         "recall_high": 0.5416666666666666,
         "confusion_matrix": [
           [
-            61,
-            12,
+            62,
+            11,
             0
           ],
           [
@@ -145,79 +145,275 @@
           "Medium",
           "High"
         ],
-        "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.84      0.85        73\n      Medium       0.80      0.91      0.85       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.76      0.80       200\nweighted avg       0.85      0.84      0.84       200\n",
+        "classification_report": "              precision    recall  f1-score   support\n\n         Low       0.87      0.85      0.86        73\n      Medium       0.81      0.91      0.86       103\n        High       1.00      0.54      0.70        24\n\n    accuracy                           0.84       200\n   macro avg       0.89      0.77      0.81       200\nweighted avg       0.86      0.84      0.84       200\n",
         "selection_rationale": "Selected by highest macro-F1 (multiclass, unweighted across classes), then High-class recall, then accuracy \u2014 not accuracy alone, because the Medium class dominates and can inflate accuracy."
       },
-      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\patient_risk\\best_pipeline.joblib"
+      "model_path": "C:\\Users\\Lenovo\\Meditwin\\MediTwinAI\\models\\patient_risk\\best_pipeline.joblib"
     },
     "waiting_time": {
       "task": "waiting_time_regression",
       "leakage_note": "Excluded target average_waiting_time_minutes from features. Used chronological holdout (no shuffle). Same-day OPD/staff features retained as operational drivers of waiting time.",
       "test_size": 0.2,
       "seed": 42,
-      "n_train": 293,
+      "n_train": 220,
+      "n_validation": 73,
       "n_test": 73,
-      "train_end_date": "2024-10-19",
+      "train_end_date": "2024-08-07",
       "test_start_date": "2024-10-20",
       "all_models": [
         {
           "model": "linear_regression",
-          "mae": 2.9498834930606814,
-          "mse": 13.332443615538859,
-          "rmse": 3.6513618850421903,
-          "r2": 0.8336017335665595,
-          "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+          "mae": 4.740484356735612,
+          "mse": 33.623781479552555,
+          "rmse": 5.798601683126075,
+          "r2": 0.6637685577651173,
+          "validation": {
+            "model": "linear_regression",
+            "mae": 4.642001751143777,
+            "mse": 50.76419228198433,
+            "rmse": 7.124899457675479,
+            "r2": 0.8225347263784073
+          }
+        },
+        {
+          "model": "huber_regression",
+          "mae": 3.9109299265380164,
+          "mse": 22.17014977324707,
+          "rmse": 4.7085188513211955,
+          "r2": 0.7783027040740387,
+          "validation": {
+            "model": "huber_regression",
+            "mae": 3.96021325593055,
+            "mse": 58.551998973040185,
+            "rmse": 7.651927794552179,
+            "r2": 0.7953095272131528
+          },
+          "selection_rationale": "Selected by lowest MAE on the chronological VALIDATION block, then RMSE, then highest R2. Reported metrics are from the separate, later TEST block.",
+          "beats_best_baseline": true
         },
         {
           "model": "random_forest",
-          "mae": 3.487965306475772,
-          "mse": 18.119259667426533,
-          "rmse": 4.25667237022378,
-          "r2": 0.7738589050394966
+          "mae": 3.961529611389604,
+          "mse": 22.099171602651992,
+          "rmse": 4.700975601154721,
+          "r2": 0.7790124723278232,
+          "validation": {
+            "model": "random_forest",
+            "mae": 5.128092363620873,
+            "mse": 84.22686637345929,
+            "rmse": 9.17751961988964,
+            "r2": 0.7055533986589219
+          }
         },
         {
           "model": "xgboost",
-          "mae": 3.577267513536427,
-          "mse": 20.0077183867888,
-          "rmse": 4.472998813635971,
-          "r2": 0.7502896130031322
+          "mae": 3.827589920775532,
+          "mse": 23.006809724497607,
+          "rmse": 4.796541433626692,
+          "r2": 0.7699362631298454,
+          "validation": {
+            "model": "xgboost",
+            "mae": 5.019413637135127,
+            "mse": 68.18189341495648,
+            "rmse": 8.257232794039204,
+            "r2": 0.7616446194256172
+          }
         }
       ],
-      "selected": {
-        "model": "linear_regression",
-        "mae": 2.9498834930606814,
-        "mse": 13.332443615538859,
-        "rmse": 3.6513618850421903,
-        "r2": 0.8336017335665595,
-        "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+      "baselines": {
+        "training_mean": {
+          "model": "training_mean",
+          "mae": 8.276950769086914,
+          "mse": 112.07236252343037,
+          "rmse": 10.58642350009815,
+          "r2": -0.12070238467493954
+        },
+        "opd_only_linear": {
+          "model": "opd_only_linear",
+          "mae": 4.601327213834007,
+          "mse": 31.475325049862857,
+          "rmse": 5.610287430235893,
+          "r2": 0.6852527148749494
+        },
+        "day_of_week_mean": {
+          "model": "day_of_week_mean",
+          "mae": 6.336901977630345,
+          "mse": 64.91718375978328,
+          "rmse": 8.057120066114399,
+          "r2": 0.35084046585740225
+        }
       },
-      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\waiting_time\\best_pipeline.joblib"
+      "best_baseline": "opd_only_linear",
+      "selected": {
+        "model": "huber_regression",
+        "mae": 3.9109299265380164,
+        "mse": 22.17014977324707,
+        "rmse": 4.7085188513211955,
+        "r2": 0.7783027040740387,
+        "validation": {
+          "model": "huber_regression",
+          "mae": 3.96021325593055,
+          "mse": 58.551998973040185,
+          "rmse": 7.651927794552179,
+          "r2": 0.7953095272131528
+        },
+        "selection_rationale": "Selected by lowest MAE on the chronological VALIDATION block, then RMSE, then highest R2. Reported metrics are from the separate, later TEST block.",
+        "beats_best_baseline": true
+      },
+      "model_path": "best_pipeline.joblib"
     },
     "opd_forecast": {
       "task": "opd_forecasting",
-      "model": "prophet",
-      "split": "chronological",
-      "holdout_days": 30,
-      "n_train": 336,
-      "n_test": 30,
-      "train_end_date": "2024-12-01",
+      "model": "XGBoost (calendar + seasonal lags)",
+      "selected_model": "XGBoost (calendar + seasonal lags)",
+      "selection_rule": "lowest validation MAE among all evaluated candidates",
+      "split": "chronological train / validation / test",
+      "validation_days": 30,
+      "test_days": 30,
+      "n_train": 278,
+      "train_end_date": "2024-11-01",
+      "validation_start_date": "2024-11-02",
       "test_start_date": "2024-12-02",
       "test_end_date": "2024-12-31",
-      "metrics_holdout": {
-        "mae": 93.20342894285825,
-        "rmse": 102.09294085336617
+      "evaluation_horizon": "each day scored as a forecast of at most 7 days ahead",
+      "metrics_validation": {
+        "mae": 26.300337727864584,
+        "mse": 1104.313097165261,
+        "rmse": 33.23120667633454,
+        "r2": 0.8121455029677104
       },
-      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\prophet_model.joblib",
-      "holdout_predictions_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\holdout_predictions.csv",
-      "note": "Holdout metrics are from a model fit on data before the holdout. Saved artifact is refit on the full series for future 7-day forecasts."
+      "metrics_holdout": {
+        "mae": 34.0373031616211,
+        "mse": 1733.680690090366,
+        "rmse": 41.637491400063546,
+        "r2": 0.7492490838045227
+      },
+      "comparison": [
+        {
+          "model": "Training mean",
+          "type": "baseline",
+          "validation": {
+            "mae": 63.27721822541967,
+            "mse": 6246.238479719819,
+            "rmse": 79.03314798057724,
+            "r2": -0.06254647433191018
+          },
+          "test": {
+            "mae": 76.47705627705628,
+            "mse": 7101.443964693316,
+            "rmse": 84.2700656502255,
+            "r2": -0.027117387092126632
+          }
+        },
+        {
+          "model": "Day-of-week mean",
+          "type": "baseline",
+          "validation": {
+            "mae": 27.61294871794872,
+            "mse": 1179.1560850865658,
+            "rmse": 34.338842221114064,
+            "r2": 0.7994139761131969
+          },
+          "test": {
+            "mae": 34.00151515151514,
+            "mse": 2737.8727961432514,
+            "rmse": 52.324686297609574,
+            "r2": 0.6040077529941172
+          }
+        },
+        {
+          "model": "Previous week, same day",
+          "type": "baseline",
+          "validation": {
+            "mae": 37.266666666666666,
+            "mse": 2699.2,
+            "rmse": 51.95382565317014,
+            "r2": 0.5408395864441379
+          },
+          "test": {
+            "mae": 41.56666666666667,
+            "mse": 4348.033333333334,
+            "rmse": 65.93961884431342,
+            "r2": 0.37112217479622545
+          }
+        },
+        {
+          "model": "Same weekday, last 4 weeks average",
+          "type": "baseline",
+          "validation": {
+            "mae": 31.983333333333334,
+            "mse": 1569.1083333333333,
+            "rmse": 39.611972095988015,
+            "r2": 0.7330792711739468
+          },
+          "test": {
+            "mae": 37.50833333333333,
+            "mse": 3296.985416666667,
+            "rmse": 57.41938189032225,
+            "r2": 0.5231404960337868
+          }
+        },
+        {
+          "model": "Ridge (calendar + seasonal lags)",
+          "type": "model",
+          "validation": {
+            "mae": 27.576312052129087,
+            "mse": 1138.5403503268644,
+            "rmse": 33.74226356258371,
+            "r2": 0.8063231112529197
+          },
+          "test": {
+            "mae": 30.717274183707705,
+            "mse": 1438.8535899603057,
+            "rmse": 37.93222363585222,
+            "r2": 0.7918914030617181
+          }
+        },
+        {
+          "model": "XGBoost (calendar + seasonal lags)",
+          "type": "model",
+          "validation": {
+            "mae": 26.300337727864584,
+            "mse": 1104.313097165261,
+            "rmse": 33.23120667633454,
+            "r2": 0.8121455029677104
+          },
+          "test": {
+            "mae": 34.0373031616211,
+            "mse": 1733.680690090366,
+            "rmse": 41.637491400063546,
+            "r2": 0.7492490838045227
+          }
+        },
+        {
+          "model": "Prophet (weekly + calendar)",
+          "type": "model",
+          "skipped_reason": "RuntimeError: Failed with error [WinError 4551] An Application Control policy has blocked this file"
+        }
+      ],
+      "best_baseline_by_validation": "Day-of-week mean",
+      "best_baseline_by_test": "Day-of-week mean",
+      "selected_beats_best_baseline_on_test": false,
+      "interval": {
+        "method": "empirical absolute-residual quantile (validation)",
+        "nominal": 0.8,
+        "halfwidth": 45.67589111328128,
+        "coverage_validation": 0.8,
+        "coverage_test": 0.7,
+        "validated_80pct": false
+      },
+      "prophet_note": "RuntimeError: Failed with error [WinError 4551] An Application Control policy has blocked this file",
+      "model_path": "forecaster.joblib",
+      "holdout_predictions_path": "holdout_predictions.csv",
+      "note": "Metrics come from models fit only on data before each evaluated block. The saved artifact is refit on all data for future forecasts."
     },
     "anomaly_detection": {
       "task": "hospital_anomaly_detection",
       "model": "isolation_forest",
-      "contamination": 0.05,
+      "contamination": 0.02,
       "n_rows": 366,
-      "n_anomalies_flagged": 19,
-      "anomaly_rate": 0.05191256830601093,
+      "n_anomalies_flagged": 8,
+      "anomaly_rate": 0.02185792349726776,
       "feature_columns": [
         "opd_patients",
         "emergency_patients",
@@ -226,19 +422,186 @@
         "average_waiting_time_minutes"
       ],
       "score_note": "anomaly_score is -decision_function (higher = more anomalous). anomaly_flag=1 means IsolationForest predict==-1.",
-      "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\isolation_forest.joblib",
-      "scored_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\anomaly_detection\\scored_operations.csv",
+      "model_path": "isolation_forest.joblib",
+      "scored_path": "scored_operations.csv",
+      "evaluation": {
+        "protocol": "Forward chaining: each block is scored by a detector fitted only on earlier days; the injected-spike labels are never used for fitting.",
+        "isolation_forest": [
+          {
+            "tp": 1,
+            "fp": 0,
+            "fn": 3,
+            "precision": 1.0,
+            "recall": 0.25,
+            "f1": 0.4,
+            "method": "isolation_forest",
+            "contamination": 0.01,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 1,
+            "missed_dates": [
+              "2024-03-04",
+              "2024-05-15",
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 2,
+            "fp": 1,
+            "fn": 2,
+            "precision": 0.6666666666666666,
+            "recall": 0.5,
+            "f1": 0.5714285714285715,
+            "method": "isolation_forest",
+            "contamination": 0.02,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 3,
+            "missed_dates": [
+              "2024-03-04",
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 3,
+            "fp": 18,
+            "fn": 1,
+            "precision": 0.14285714285714285,
+            "recall": 0.75,
+            "f1": 0.24,
+            "method": "isolation_forest",
+            "contamination": 0.03,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 21,
+            "missed_dates": [
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 4,
+            "fp": 55,
+            "fn": 0,
+            "precision": 0.06779661016949153,
+            "recall": 1.0,
+            "f1": 0.12698412698412698,
+            "method": "isolation_forest",
+            "contamination": 0.05,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 59,
+            "missed_dates": [],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          }
+        ],
+        "local_outlier_factor": [
+          {
+            "tp": 3,
+            "fp": 0,
+            "fn": 1,
+            "precision": 1.0,
+            "recall": 0.75,
+            "f1": 0.8571428571428571,
+            "method": "lof",
+            "contamination": 0.01,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 3,
+            "missed_dates": [
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 3,
+            "fp": 24,
+            "fn": 1,
+            "precision": 0.1111111111111111,
+            "recall": 0.75,
+            "f1": 0.19354838709677416,
+            "method": "lof",
+            "contamination": 0.02,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 27,
+            "missed_dates": [
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 3,
+            "fp": 38,
+            "fn": 1,
+            "precision": 0.07317073170731707,
+            "recall": 0.75,
+            "f1": 0.13333333333333333,
+            "method": "lof",
+            "contamination": 0.03,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 41,
+            "missed_dates": [
+              "2024-05-20"
+            ],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          },
+          {
+            "tp": 4,
+            "fp": 44,
+            "fn": 0,
+            "precision": 0.08333333333333333,
+            "recall": 1.0,
+            "f1": 0.15384615384615385,
+            "method": "lof",
+            "contamination": 0.05,
+            "n_days_scored": 306,
+            "n_injected_in_scored": 4,
+            "n_injected_total": 5,
+            "n_flagged": 48,
+            "missed_dates": [],
+            "excluded_dates_no_history": [
+              "2024-01-23"
+            ]
+          }
+        ],
+        "small_sample_warning": "Only 4 injected spikes are scored; precision/recall are indicative, not statistically stable."
+      },
+      "contamination_selection": "chosen by pooled F1 on the forward-chaining evaluation",
+      "in_sample_note": "scored_operations.csv flags are an in-sample scoring of the final model (fit on all days) used only for display; use `evaluation` for accuracy.",
       "example_anomaly_dates": [
-        "2024-01-01",
-        "2024-01-02",
-        "2024-01-03",
-        "2024-01-04",
-        "2024-01-05",
-        "2024-01-06",
-        "2024-01-07",
-        "2024-01-13",
-        "2024-03-02",
-        "2024-03-26"
+        "2024-01-23",
+        "2024-01-26",
+        "2024-02-04",
+        "2024-03-04",
+        "2024-05-15",
+        "2024-05-20",
+        "2024-08-15",
+        "2024-09-19"
       ]
     }
   },

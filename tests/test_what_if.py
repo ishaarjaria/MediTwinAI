@@ -176,6 +176,76 @@ class TestWhatIfScenarios(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.sim.simulate(self.base, patient_inflow_percent=-150)
 
+    def test_no_change_ignores_observed_baseline_waiting_time(self):
+        # Observed wait deliberately differs from the model's output (44.0).
+        base = baseline_state()
+        base.average_waiting_time = 10.0
+        result = self.sim.simulate(base)
+        wait = self._metric(result, "expected_waiting_time_minutes")
+        self.assertEqual(wait.current, wait.simulated)
+        self.assertEqual(result.observed_waiting_time, 10.0)
+        self.assertEqual(result.baseline_predicted_waiting_time, wait.current)
+
+    def test_no_model_shows_same_value_both_sides_and_unavailable(self):
+        class NoModel:
+            pass
+
+        base = baseline_state()
+        result = WhatIfSimulator(prediction_service=NoModel()).simulate(
+            base, patient_inflow_percent=20
+        )
+        wait = self._metric(result, "expected_waiting_time_minutes")
+        self.assertEqual(wait.current, wait.simulated)
+        self.assertIn("unavailable", wait.source)
+        self.assertIsNone(result.baseline_predicted_waiting_time)
+
+    def test_model_rejection_becomes_scenario_error(self):
+        from src.models.prediction_service import PredictionServiceError
+        from src.simulation.what_if import ScenarioError
+
+        class Rejecting:
+            def predict_waiting_time(self, days):
+                raise PredictionServiceError("opd out of range")
+
+        with self.assertRaises(ScenarioError):
+            WhatIfSimulator(prediction_service=Rejecting()).simulate(baseline_state())
+
+    def test_invalid_numbers_and_baselines_rejected(self):
+        from src.simulation.what_if import ScenarioError
+
+        for kwargs in (
+            {"patient_inflow_percent": float("nan")},
+            {"emergency_cases_percent": float("inf")},
+            {"icu_capacity": 0},
+            {"nurses_available": -5},
+            {"doctors_available": 1.5},
+        ):
+            with self.subTest(kwargs=kwargs):
+                with self.assertRaises(ScenarioError):
+                    self.sim.simulate(self.base, **kwargs)
+
+        bad = baseline_state()
+        bad.occupied_beds = bad.total_beds + 1
+        with self.assertRaises(ScenarioError):
+            self.sim.simulate(bad)
+        bad = baseline_state()
+        bad.occupied_icu_beds = bad.total_icu_beds + 1
+        with self.assertRaises(ScenarioError):
+            self.sim.simulate(bad)
+
+    def test_more_beds_does_not_change_demand_and_lowers_occupancy(self):
+        result = self.sim.simulate(self.base, total_beds=400)
+        occ = self._metric(result, "bed_occupancy_percentage")
+        self.assertLess(occ.simulated, occ.current)
+        self.assertEqual(self._metric(result, "bed_requirement").absolute_change, 0)
+        self.assertEqual(result.bed_shortfall, 0)
+
+    def test_inflow_raises_icu_only_through_bed_demand(self):
+        # Large inflow lifts bed demand, which lifts ICU by the generator rule.
+        result = self.sim.simulate(self.base, patient_inflow_percent=100)
+        icu = self._metric(result, "icu_pressure_percentage")
+        self.assertGreaterEqual(icu.simulated, icu.current)
+
     def test_summary_mentions_both_scenarios(self):
         result = self.sim.simulate(self.base, patient_inflow_percent=20)
         text = result.summary_text()

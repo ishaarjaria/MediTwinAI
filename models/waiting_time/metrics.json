@@ -3,41 +3,110 @@
   "leakage_note": "Excluded target average_waiting_time_minutes from features. Used chronological holdout (no shuffle). Same-day OPD/staff features retained as operational drivers of waiting time.",
   "test_size": 0.2,
   "seed": 42,
-  "n_train": 293,
+  "n_train": 220,
+  "n_validation": 73,
   "n_test": 73,
-  "train_end_date": "2024-10-19",
+  "train_end_date": "2024-08-07",
   "test_start_date": "2024-10-20",
   "all_models": [
     {
       "model": "linear_regression",
-      "mae": 2.9498834930606814,
-      "mse": 13.332443615538859,
-      "rmse": 3.6513618850421903,
-      "r2": 0.8336017335665595,
-      "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+      "mae": 4.740484356735612,
+      "mse": 33.623781479552555,
+      "rmse": 5.798601683126075,
+      "r2": 0.6637685577651173,
+      "validation": {
+        "model": "linear_regression",
+        "mae": 4.642001751143777,
+        "mse": 50.76419228198433,
+        "rmse": 7.124899457675479,
+        "r2": 0.8225347263784073
+      }
+    },
+    {
+      "model": "huber_regression",
+      "mae": 3.9109299265380164,
+      "mse": 22.17014977324707,
+      "rmse": 4.7085188513211955,
+      "r2": 0.7783027040740387,
+      "validation": {
+        "model": "huber_regression",
+        "mae": 3.96021325593055,
+        "mse": 58.551998973040185,
+        "rmse": 7.651927794552179,
+        "r2": 0.7953095272131528
+      },
+      "selection_rationale": "Selected by lowest MAE on the chronological VALIDATION block, then RMSE, then highest R2. Reported metrics are from the separate, later TEST block.",
+      "beats_best_baseline": true
     },
     {
       "model": "random_forest",
-      "mae": 3.487965306475772,
-      "mse": 18.119259667426533,
-      "rmse": 4.25667237022378,
-      "r2": 0.7738589050394966
+      "mae": 3.961529611389604,
+      "mse": 22.099171602651992,
+      "rmse": 4.700975601154721,
+      "r2": 0.7790124723278232,
+      "validation": {
+        "model": "random_forest",
+        "mae": 5.128092363620873,
+        "mse": 84.22686637345929,
+        "rmse": 9.17751961988964,
+        "r2": 0.7055533986589219
+      }
     },
     {
       "model": "xgboost",
-      "mae": 3.577267513536427,
-      "mse": 20.0077183867888,
-      "rmse": 4.472998813635971,
-      "r2": 0.7502896130031322
+      "mae": 3.827589920775532,
+      "mse": 23.006809724497607,
+      "rmse": 4.796541433626692,
+      "r2": 0.7699362631298454,
+      "validation": {
+        "model": "xgboost",
+        "mae": 5.019413637135127,
+        "mse": 68.18189341495648,
+        "rmse": 8.257232794039204,
+        "r2": 0.7616446194256172
+      }
     }
   ],
-  "selected": {
-    "model": "linear_regression",
-    "mae": 2.9498834930606814,
-    "mse": 13.332443615538859,
-    "rmse": 3.6513618850421903,
-    "r2": 0.8336017335665595,
-    "selection_rationale": "Selected by lowest RMSE on the chronological holdout, then MAE, then highest R2. RMSE emphasises large waiting-time misses."
+  "baselines": {
+    "training_mean": {
+      "model": "training_mean",
+      "mae": 8.276950769086914,
+      "mse": 112.07236252343037,
+      "rmse": 10.58642350009815,
+      "r2": -0.12070238467493954
+    },
+    "opd_only_linear": {
+      "model": "opd_only_linear",
+      "mae": 4.601327213834007,
+      "mse": 31.475325049862857,
+      "rmse": 5.610287430235893,
+      "r2": 0.6852527148749494
+    },
+    "day_of_week_mean": {
+      "model": "day_of_week_mean",
+      "mae": 6.336901977630345,
+      "mse": 64.91718375978328,
+      "rmse": 8.057120066114399,
+      "r2": 0.35084046585740225
+    }
   },
-  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\waiting_time\\best_pipeline.joblib"
+  "best_baseline": "opd_only_linear",
+  "selected": {
+    "model": "huber_regression",
+    "mae": 3.9109299265380164,
+    "mse": 22.17014977324707,
+    "rmse": 4.7085188513211955,
+    "r2": 0.7783027040740387,
+    "validation": {
+      "model": "huber_regression",
+      "mae": 3.96021325593055,
+      "mse": 58.551998973040185,
+      "rmse": 7.651927794552179,
+      "r2": 0.7953095272131528
+    },
+    "selection_rationale": "Selected by lowest MAE on the chronological VALIDATION block, then RMSE, then highest R2. Reported metrics are from the separate, later TEST block.",
+    "beats_best_baseline": true
+  },
+  "model_path": "best_pipeline.joblib"
 }

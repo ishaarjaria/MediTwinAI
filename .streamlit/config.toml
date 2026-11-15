@@ -1,0 +1,28 @@
+[theme]
+base = "light"
+primaryColor = "#145A55"
+backgroundColor = "#F2F7F5"
+secondaryBackgroundColor = "#F6FAF8"
+textColor = "#142B2A"
+borderColor = "#D3E1DB"
+font = "Inter, sans-serif"
+
+[[theme.fontFaces]]
+family = "Inter"
+url = "app/static/inter-latin.woff2"
+weight = "300 700"
+
+[theme.sidebar]
+backgroundColor = "#FBFDFC"
+secondaryBackgroundColor = "#F6FAF8"
+textColor = "#142B2A"
+borderColor = "#E2ECE8"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+enableStaticServing = true

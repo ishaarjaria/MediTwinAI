@@ -1,0 +1,5 @@
+inter-latin.woff2 is the Latin subset of the Inter typeface (variable font, weights 300-700).
+Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter).
+Licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org
+The font is served from this folder by Streamlit's static file serving (see .streamlit/config.toml),
+so the app does not request fonts from any external service.

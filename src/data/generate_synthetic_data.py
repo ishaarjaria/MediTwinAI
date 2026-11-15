@@ -27,7 +27,6 @@ TOTAL_BEDS = 250
 TOTAL_ICU_BEDS = 30
 BASE_DOCTORS = 45
 BASE_NURSES = 120
-BASE_MEDICINE_STOCK = 50000
 
 # Default date range: one full calendar year of daily records.
 DEFAULT_START_DATE = "2024-01-01"
@@ -63,21 +62,108 @@ def get_season(month: int) -> str:
     return "Autumn"
 
 
-def generate_hospital_operations(
+# ---------------------------------------------------------------------------
+# Operational dynamics (all values synthetic; each has an operational meaning)
+# ---------------------------------------------------------------------------
+# Bed occupancy is a stock-and-flow process:
+#   occupied[t] = occupied[t-1] + admissions[t] - discharges[t]
+# where discharges are a fraction of the beds currently occupied (the inverse of
+# the average length of stay, ~4 days). Weekends discharge fewer patients.
+DISCHARGE_RATE_WEEKDAY = 0.27
+DISCHARGE_RATE_WEEKEND = 0.19
+INITIAL_OCCUPIED_BEDS = 150  # ~steady state for normal demand (no warm-up drift)
+
+# Medicine stock follows a reorder-point policy with delivery lead time.
+BASE_MEDICINE_STOCK = 16000  # opening stock (units)
+REORDER_POINT = 10500  # place an order when stock falls to/below this
+ORDER_QUANTITY = 10000
+LEAD_TIME_DAYS = (3, 5)  # inclusive range of normal delivery delay
+
+# Documented, controlled high-demand / resource-pressure periods.
+# Multipliers apply on top of the seasonal baseline.
+PRESSURE_PERIODS = [
+    {
+        "name": "Winter respiratory wave",
+        "start": "2024-01-15",
+        "end": "2024-02-12",
+        "opd": 1.10,
+        "emergency": 1.30,
+        "admission": 1.08,
+    },
+    {
+        "name": "Monsoon dengue outbreak",
+        "start": "2024-08-12",
+        "end": "2024-09-08",
+        "opd": 1.15,
+        "emergency": 1.35,
+        "admission": 1.10,
+    },
+    {
+        "name": "Festival accident / burn surge",
+        "start": "2024-10-30",
+        "end": "2024-11-04",
+        "opd": 1.00,
+        "emergency": 1.40,
+        "admission": 1.10,
+    },
+]
+# Staff sickness during the monsoon outbreak (documented resource pressure).
+STAFF_SHORTAGE_PERIODS = [
+    {"name": "Outbreak staff sickness", "start": "2024-08-19", "end": "2024-08-30", "factor": 0.80},
+]
+# Supplier disruption: orders placed in this window arrive late by extra days.
+SUPPLY_DISRUPTION_PERIODS = [
+    {"name": "Supplier delay", "start": "2024-08-25", "end": "2024-09-10", "extra_days": 9},
+]
+N_INJECTED_SPIKES = 5
+SPIKE_TYPES = ("emergency_surge", "opd_rush", "icu_pressure")
+
+
+def _in_period(date_str: str, start: str, end: str) -> bool:
+    return start <= date_str <= end
+
+
+def _period_factor(date_str: str, key: str) -> float:
+    factor = 1.0
+    for p in PRESSURE_PERIODS:
+        if _in_period(date_str, p["start"], p["end"]):
+            factor *= p[key]
+    return factor
+
+
+def _choose_spikes(n_days: int, seed: int) -> dict[int, str]:
+    """Pick spike day indices and types using an independent RNG stream."""
+    rng = np.random.default_rng(seed + 1000)
+    idx = sorted(
+        rng.choice(np.arange(20, n_days - 20), size=N_INJECTED_SPIKES, replace=False).tolist()
+    )
+    return {int(i): str(rng.choice(SPIKE_TYPES)) for i in idx}
+
+
+def generate_hospital_operations_with_truth(
     start_date: str = DEFAULT_START_DATE,
     end_date: str = DEFAULT_END_DATE,
     seed: int = RANDOM_SEED,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Generate at least one year of daily synthetic hospital operational data.
+    Generate daily synthetic hospital operations plus the injected-spike ground truth.
+
+    Returns ``(hospital_df, truth_df)``; ``truth_df`` has columns ``date``,
+    ``spike_type`` and is used only to *evaluate* anomaly detection.
 
     Logical relationships encoded:
-    - Higher OPD generally increases waiting time.
-    - Higher emergency volume increases admissions and ICU usage.
-    - Occupied beds never exceed total beds; ICU occupied never exceeds ICU capacity.
-    - Medicine consumption broadly rises with patient load.
-    - Weekend and seasonal variation are visible.
-    - A few realistic unusual spikes are injected for future anomaly detection.
+    - Waiting time rises with OPD, emergency volume and bed occupancy, and falls
+      with more doctors.
+    - OPD and emergency demand follow season, weekday, holidays and documented
+      pressure periods (``PRESSURE_PERIODS``); demand has day-to-day persistence.
+    - Admissions rise with emergency volume; discharges are a fraction of the
+      beds occupied (length of stay), so occupancy evolves continuously and can
+      rise in pressure periods and recover afterwards.
+    - ICU occupancy follows emergency load and overall bed occupancy.
+    - Medicine stock is consumed daily and replenished by a reorder-point policy
+      with lead time, including a documented supplier-disruption window.
+    - A few unusual spikes are injected (applied inside the daily flow so the
+      beds / stock stay internally consistent).
     """
     rng = np.random.default_rng(seed)
     dates = pd.date_range(start=start_date, end=end_date, freq="D")
@@ -89,10 +175,13 @@ def generate_hospital_operations(
             f"({start_date} to {end_date})."
         )
 
+    spikes = _choose_spikes(n_days, seed)
     records: list[dict] = []
+    truth: list[dict] = []
     medicine_stock = float(BASE_MEDICINE_STOCK)
-    # Carry a mild occupancy memory so bed usage looks continuous day-to-day.
-    prev_occupied = 160.0
+    pending_orders: list[tuple[int, float]] = []  # (arrival day index, quantity)
+    prev_occupied = float(INITIAL_OCCUPIED_BEDS)
+    demand_memory = 0.0  # AR(1) persistence of demand (outbreaks last several days)
 
     for i, current_date in enumerate(dates):
         day_of_week = int(current_date.dayofweek)  # Monday=0 ... Sunday=6
@@ -100,88 +189,100 @@ def generate_hospital_operations(
         date_str = current_date.strftime("%Y-%m-%d")
         is_holiday = int(date_str in HOLIDAY_DATES)
         season = get_season(int(current_date.month))
+        spike = spikes.get(i)
 
-        # --- Seasonal base load ---
-        # Winter / monsoon often see higher respiratory and infection-related demand.
         if season == "Winter":
-            seasonal_opd = 320
-            seasonal_emergency = 55
+            seasonal_opd, seasonal_emergency = 320, 55
         elif season == "Monsoon":
-            seasonal_opd = 300
-            seasonal_emergency = 60
+            seasonal_opd, seasonal_emergency = 300, 60
         elif season == "Spring":
-            seasonal_opd = 260
-            seasonal_emergency = 45
-        else:  # Autumn
-            seasonal_opd = 270
-            seasonal_emergency = 48
+            seasonal_opd, seasonal_emergency = 260, 45
+        else:
+            seasonal_opd, seasonal_emergency = 270, 48
 
-        # Weekend: lower OPD (clinics quieter), slightly higher emergency.
         weekend_opd_factor = 0.55 if is_weekend else 1.0
         weekend_emergency_factor = 1.15 if is_weekend else 1.0
-
-        # Holidays: OPD drops sharply; emergency rises.
         holiday_opd_factor = 0.35 if is_holiday else 1.0
         holiday_emergency_factor = 1.25 if is_holiday else 1.0
-
-        # Mild weekly / yearly smooth variation (sinusoidal).
         weekly_wave = 1.0 + 0.08 * np.sin(2 * np.pi * day_of_week / 7)
         yearly_wave = 1.0 + 0.05 * np.sin(2 * np.pi * i / 365)
 
-        opd_patients = int(
-            rng.normal(
-                loc=seasonal_opd * weekend_opd_factor * holiday_opd_factor * weekly_wave,
-                scale=25,
-            )
-        )
-        opd_patients = max(40, opd_patients)
+        # Persistent demand shock (random, but correlated across days).
+        demand_memory = 0.6 * demand_memory + rng.normal(0, 0.04)
+        demand_shock = 1.0 + demand_memory
 
-        emergency_patients = int(
-            rng.normal(
-                loc=seasonal_emergency
-                * weekend_emergency_factor
-                * holiday_emergency_factor
-                * yearly_wave,
-                scale=8,
-            )
+        opd_patients = max(
+            40,
+            int(
+                rng.normal(
+                    loc=seasonal_opd
+                    * weekend_opd_factor
+                    * holiday_opd_factor
+                    * weekly_wave
+                    * _period_factor(date_str, "opd")
+                    * demand_shock,
+                    scale=25,
+                )
+            ),
         )
-        emergency_patients = max(10, emergency_patients)
-
-        # Admissions rise with emergency volume (and a fraction of OPD).
-        admissions = int(
-            0.35 * emergency_patients
-            + 0.04 * opd_patients
-            + rng.normal(8, 3)
+        emergency_patients = max(
+            10,
+            int(
+                rng.normal(
+                    loc=seasonal_emergency
+                    * weekend_emergency_factor
+                    * holiday_emergency_factor
+                    * yearly_wave
+                    * _period_factor(date_str, "emergency")
+                    * demand_shock,
+                    scale=8,
+                )
+            ),
         )
-        admissions = max(5, admissions)
 
-        # Discharges roughly track previous occupancy pressure.
-        discharges = int(0.85 * admissions + rng.normal(5, 4) + 0.02 * prev_occupied)
-        discharges = max(3, discharges)
-
-        occupied_beds = int(
-            np.clip(
-                prev_occupied + admissions - discharges + rng.normal(0, 4),
-                40,
-                TOTAL_BEDS,
-            )
+        admissions = max(
+            5,
+            int(
+                (0.35 * emergency_patients + 0.04 * opd_patients + rng.normal(8, 3))
+                * _period_factor(date_str, "admission")
+            ),
         )
+
+        # --- injected spikes: applied to the daily inputs so flows stay consistent ---
+        if spike == "emergency_surge":
+            emergency_patients = int(emergency_patients * 2.2 + 25)
+            admissions = int(admissions * 1.8 + 10)
+        elif spike == "opd_rush":
+            opd_patients = int(opd_patients * 1.9 + 80)
+        elif spike == "icu_pressure":
+            emergency_patients = int(emergency_patients * 1.5 + 15)
+
+        # --- beds: stock-and-flow with length-of-stay discharges ---
+        rate = DISCHARGE_RATE_WEEKEND if is_weekend else DISCHARGE_RATE_WEEKDAY
+        discharges = max(3, int(round(prev_occupied * rate + rng.normal(0, 3))))
+        flow_occupied = float(
+            np.clip(prev_occupied + admissions - discharges, 20, TOTAL_BEDS)
+        )
+        occupied_beds = int(flow_occupied)
         available_beds = TOTAL_BEDS - occupied_beds
         bed_occupancy_percentage = round(100.0 * occupied_beds / TOTAL_BEDS, 2)
 
-        # ICU usage increases with emergency load and overall occupancy.
+        # --- ICU ---
         icu_pressure = (
-            0.25 * emergency_patients
-            + 0.02 * occupied_beds
-            + rng.normal(2, 1.5)
+            0.17 * emergency_patients + 0.045 * occupied_beds + rng.normal(1, 1.2)
         )
+        if spike == "emergency_surge":
+            icu_pressure += rng.integers(6, 12)
+        if spike == "icu_pressure":
+            icu_pressure = TOTAL_ICU_BEDS
         occupied_icu_beds = int(np.clip(icu_pressure, 3, TOTAL_ICU_BEDS))
-        icu_occupancy_percentage = round(
-            100.0 * occupied_icu_beds / TOTAL_ICU_BEDS, 2
-        )
+        icu_occupancy_percentage = round(100.0 * occupied_icu_beds / TOTAL_ICU_BEDS, 2)
 
-        # Staffing: slightly lower on weekends/holidays.
+        # --- staffing ---
         staff_factor = 0.85 if (is_weekend or is_holiday) else 1.0
+        for p in STAFF_SHORTAGE_PERIODS:
+            if _in_period(date_str, p["start"], p["end"]):
+                staff_factor *= p["factor"]
         doctors_available = int(
             np.clip(rng.normal(BASE_DOCTORS * staff_factor, 3), 25, BASE_DOCTORS + 5)
         )
@@ -189,22 +290,24 @@ def generate_hospital_operations(
             np.clip(rng.normal(BASE_NURSES * staff_factor, 8), 70, BASE_NURSES + 15)
         )
 
-        # Waiting time rises with OPD and falls when more doctors are available.
-        average_waiting_time_minutes = round(
-            float(
-                np.clip(
-                    8
-                    + 0.12 * opd_patients
-                    - 0.35 * doctors_available
-                    + rng.normal(0, 4),
-                    5,
-                    180,
-                )
-            ),
-            1,
+        # --- waiting time ---
+        # Waiting time rises with outpatient load, emergency volume (shared triage and
+        # staff) and bed occupancy (crowding); it falls with more doctors.
+        waiting = (
+            0.12 * opd_patients
+            + 0.12 * emergency_patients
+            + 0.05 * bed_occupancy_percentage
+            - 0.35 * doctors_available
+            + 2.0
+            + rng.normal(0, 4)
         )
+        if spike == "emergency_surge":
+            waiting *= 1.6
+        elif spike == "opd_rush":
+            waiting *= 1.9
+        average_waiting_time_minutes = round(float(np.clip(waiting, 5, 180)), 1)
 
-        # Medicine: consumption tracks patient load; stock depletes and is restocked.
+        # --- medicine: consumption, deliveries, reorder policy ---
         medicine_consumption_units = int(
             max(
                 50,
@@ -214,29 +317,33 @@ def generate_hospital_operations(
                 + rng.normal(20, 10),
             )
         )
-        medicine_stock = max(500.0, medicine_stock - medicine_consumption_units)
-        # Weekly restock roughly every Monday.
-        if day_of_week == 0:
-            medicine_stock = min(
-                BASE_MEDICINE_STOCK * 1.2,
-                medicine_stock + rng.uniform(8000, 12000),
-            )
+        if spike == "emergency_surge":
+            medicine_consumption_units = int(medicine_consumption_units * 1.7)
+        elif spike == "opd_rush":
+            medicine_consumption_units = int(medicine_consumption_units * 1.5)
+        arrived = sum(q for d, q in pending_orders if d <= i)
+        pending_orders = [(d, q) for d, q in pending_orders if d > i]
+        medicine_stock = max(0.0, medicine_stock + arrived - medicine_consumption_units)
+        if medicine_stock <= REORDER_POINT and not pending_orders:
+            lead = int(rng.integers(LEAD_TIME_DAYS[0], LEAD_TIME_DAYS[1] + 1))
+            for p in SUPPLY_DISRUPTION_PERIODS:
+                if _in_period(date_str, p["start"], p["end"]):
+                    lead += p["extra_days"]
+            pending_orders.append((i + lead, float(ORDER_QUANTITY)))
         medicine_stock_units = int(medicine_stock)
 
-        # Equipment availability dips when occupancy/ICU pressure is high.
-        equipment_availability_percentage = round(
-            float(
-                np.clip(
-                    98
-                    - 0.05 * bed_occupancy_percentage
-                    - 0.08 * icu_occupancy_percentage
-                    + rng.normal(0, 1.5),
-                    70,
-                    100,
-                )
-            ),
-            2,
+        equipment = (
+            98
+            - 0.05 * bed_occupancy_percentage
+            - 0.08 * icu_occupancy_percentage
+            + rng.normal(0, 1.5)
         )
+        if spike == "icu_pressure":
+            equipment -= 12
+        equipment_availability_percentage = round(float(np.clip(equipment, 70, 100)), 2)
+
+        if spike is not None:
+            truth.append({"date": date_str, "spike_type": spike})
 
         records.append(
             {
@@ -264,84 +371,21 @@ def generate_hospital_operations(
                 "equipment_availability_percentage": equipment_availability_percentage,
             }
         )
-        prev_occupied = float(occupied_beds)
+        prev_occupied = flow_occupied
 
     df = pd.DataFrame(records)
-
-    # Inject a small number of realistic unusual spikes for future anomaly detection.
-    df = _inject_anomaly_spikes(df, rng)
     _validate_hospital_constraints(df)
-    return df
+    return df, pd.DataFrame(truth, columns=["date", "spike_type"])
 
 
-def _inject_anomaly_spikes(df: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
-    """
-    Add a few unusual but realistic spike days (e.g., mass-casualty style surge,
-    festival rush, or infection outbreak pressure). Still respects capacity caps.
-    """
-    df = df.copy()
-    n = len(df)
-    # Choose 5 distinct spike days away from the very start/end.
-    spike_indices = sorted(
-        rng.choice(np.arange(20, n - 20), size=5, replace=False).tolist()
-    )
+def generate_hospital_operations(
+    start_date: str = DEFAULT_START_DATE,
+    end_date: str = DEFAULT_END_DATE,
+    seed: int = RANDOM_SEED,
+) -> pd.DataFrame:
+    """Generate daily synthetic hospital operations (see the ``..._with_truth`` variant)."""
+    return generate_hospital_operations_with_truth(start_date, end_date, seed)[0]
 
-    for idx in spike_indices:
-        spike_type = rng.choice(["emergency_surge", "opd_rush", "icu_pressure"])
-
-        if spike_type == "emergency_surge":
-            df.loc[idx, "emergency_patients"] = int(
-                df.loc[idx, "emergency_patients"] * 2.2 + 25
-            )
-            df.loc[idx, "admissions"] = int(df.loc[idx, "admissions"] * 1.8 + 10)
-            new_icu = min(
-                TOTAL_ICU_BEDS,
-                int(df.loc[idx, "occupied_icu_beds"] + rng.integers(8, 15)),
-            )
-            df.loc[idx, "occupied_icu_beds"] = new_icu
-            df.loc[idx, "icu_occupancy_percentage"] = round(
-                100.0 * new_icu / TOTAL_ICU_BEDS, 2
-            )
-            new_occupied = min(
-                TOTAL_BEDS,
-                int(df.loc[idx, "occupied_beds"] + rng.integers(20, 40)),
-            )
-            df.loc[idx, "occupied_beds"] = new_occupied
-            df.loc[idx, "available_beds"] = TOTAL_BEDS - new_occupied
-            df.loc[idx, "bed_occupancy_percentage"] = round(
-                100.0 * new_occupied / TOTAL_BEDS, 2
-            )
-            df.loc[idx, "medicine_consumption_units"] = int(
-                df.loc[idx, "medicine_consumption_units"] * 1.7
-            )
-            df.loc[idx, "average_waiting_time_minutes"] = round(
-                min(180.0, float(df.loc[idx, "average_waiting_time_minutes"]) * 1.6),
-                1,
-            )
-
-        elif spike_type == "opd_rush":
-            df.loc[idx, "opd_patients"] = int(df.loc[idx, "opd_patients"] * 1.9 + 80)
-            df.loc[idx, "average_waiting_time_minutes"] = round(
-                min(180.0, float(df.loc[idx, "average_waiting_time_minutes"]) * 1.9),
-                1,
-            )
-            df.loc[idx, "medicine_consumption_units"] = int(
-                df.loc[idx, "medicine_consumption_units"] * 1.5
-            )
-
-        else:  # icu_pressure
-            new_icu = TOTAL_ICU_BEDS  # near/full ICU capacity spike
-            df.loc[idx, "occupied_icu_beds"] = new_icu
-            df.loc[idx, "icu_occupancy_percentage"] = 100.0
-            df.loc[idx, "emergency_patients"] = int(
-                df.loc[idx, "emergency_patients"] * 1.5 + 15
-            )
-            df.loc[idx, "equipment_availability_percentage"] = round(
-                max(70.0, float(df.loc[idx, "equipment_availability_percentage"]) - 12),
-                2,
-            )
-
-    return df
 
 
 def _validate_hospital_constraints(df: pd.DataFrame) -> None:
@@ -360,6 +404,65 @@ def _validate_hospital_constraints(df: pd.DataFrame) -> None:
         )
 
 
+def risk_score_breakdown(row: pd.Series) -> list[tuple[str, int]]:
+    """
+    Itemised synthetic risk score: a list of ``(factor, points)`` for every rule
+    that contributes. ``assign_risk_level`` sums these points.
+
+    These rules are for educational labelling only. They are NOT validated medical
+    guidelines and must not be used for real patient care.
+    """
+    items: list[tuple[str, int]] = []
+
+    def add(text: str, points: int) -> None:
+        items.append((text, points))
+
+    # Age contributes to risk in this synthetic scheme.
+    if row["age"] >= 65:
+        add("Age 65 or older", 2)
+    elif row["age"] >= 45:
+        add("Age 45 to 64", 1)
+
+    # Vital-sign style heuristics (synthetic thresholds).
+    if row["heart_rate"] < 50 or row["heart_rate"] > 110:
+        add("Heart rate far outside 50-110", 2)
+    elif row["heart_rate"] < 60 or row["heart_rate"] > 100:
+        add("Heart rate outside 60-100", 1)
+
+    if row["systolic_bp"] >= 160 or row["systolic_bp"] <= 90:
+        add("Systolic blood pressure far outside 90-160", 2)
+    elif row["systolic_bp"] >= 140 or row["systolic_bp"] <= 100:
+        add("Systolic blood pressure outside 100-140", 1)
+
+    if row["diastolic_bp"] >= 100 or row["diastolic_bp"] <= 50:
+        add("Diastolic blood pressure outside 50-100", 1)
+
+    if row["temperature"] >= 39.0 or row["temperature"] <= 35.5:
+        add("Temperature far outside 35.5-39.0", 2)
+    elif row["temperature"] >= 38.0:
+        add("Fever (38.0 or higher)", 1)
+
+    if row["oxygen_saturation"] < 90:
+        add("Oxygen saturation below 90", 3)
+    elif row["oxygen_saturation"] < 94:
+        add("Oxygen saturation below 94", 2)
+    elif row["oxygen_saturation"] < 96:
+        add("Oxygen saturation below 96", 1)
+
+    if row["chronic_disease"] == "Yes":
+        add("Chronic disease", 2)
+
+    if row["emergency_case"] == "Yes":
+        add("Emergency case", 2)
+
+    if row["previous_admissions"] >= 3:
+        add("Three or more previous admissions", 2)
+    elif row["previous_admissions"] >= 1:
+        add("Previous admission", 1)
+
+    return items
+
+
 def assign_risk_level(row: pd.Series) -> str:
     """
     Assign Low / Medium / High risk using transparent synthetic clinical-style rules.
@@ -367,51 +470,7 @@ def assign_risk_level(row: pd.Series) -> str:
     These rules are for educational labelling only. They are NOT validated medical
     guidelines and must not be used for real patient care.
     """
-    score = 0
-
-    # Age contributes to risk in this synthetic scheme.
-    if row["age"] >= 65:
-        score += 2
-    elif row["age"] >= 45:
-        score += 1
-
-    # Vital-sign style heuristics (synthetic thresholds).
-    if row["heart_rate"] < 50 or row["heart_rate"] > 110:
-        score += 2
-    elif row["heart_rate"] < 60 or row["heart_rate"] > 100:
-        score += 1
-
-    if row["systolic_bp"] >= 160 or row["systolic_bp"] <= 90:
-        score += 2
-    elif row["systolic_bp"] >= 140 or row["systolic_bp"] <= 100:
-        score += 1
-
-    if row["diastolic_bp"] >= 100 or row["diastolic_bp"] <= 50:
-        score += 1
-
-    if row["temperature"] >= 39.0 or row["temperature"] <= 35.5:
-        score += 2
-    elif row["temperature"] >= 38.0:
-        score += 1
-
-    if row["oxygen_saturation"] < 90:
-        score += 3
-    elif row["oxygen_saturation"] < 94:
-        score += 2
-    elif row["oxygen_saturation"] < 96:
-        score += 1
-
-    if row["chronic_disease"] == "Yes":
-        score += 2
-
-    if row["emergency_case"] == "Yes":
-        score += 2
-
-    if row["previous_admissions"] >= 3:
-        score += 2
-    elif row["previous_admissions"] >= 1:
-        score += 1
-
+    score = sum(points for _, points in risk_score_breakdown(row))
     if score >= 7:
         return "High"
     if score >= 4:
@@ -475,8 +534,13 @@ def save_datasets(
     hospital_df: pd.DataFrame,
     patient_df: pd.DataFrame,
     output_dir: Path | None = None,
+    truth_df: pd.DataFrame | None = None,
 ) -> tuple[Path, Path]:
-    """Save CSVs under data/synthetic/ and return their paths."""
+    """Save CSVs under data/synthetic/ and return their paths.
+
+    If ``truth_df`` (injected-spike ground truth) is given it is saved as
+    ``injected_anomalies.csv`` for anomaly-detection evaluation only.
+    """
     if output_dir is None:
         output_dir = get_project_root() / "data" / "synthetic"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -486,6 +550,8 @@ def save_datasets(
 
     hospital_df.to_csv(hospital_path, index=False)
     patient_df.to_csv(patient_path, index=False)
+    if truth_df is not None:
+        truth_df.to_csv(output_dir / "injected_anomalies.csv", index=False)
     return hospital_path, patient_path
 
 
@@ -520,7 +586,7 @@ def main() -> None:
 
     try:
         print("Generating synthetic hospital operations data...")
-        hospital_df = generate_hospital_operations(
+        hospital_df, truth_df = generate_hospital_operations_with_truth(
             start_date=args.start_date,
             end_date=args.end_date,
             seed=args.seed,
@@ -530,7 +596,9 @@ def main() -> None:
             n_patients=args.n_patients,
             seed=args.seed,
         )
-        hospital_path, patient_path = save_datasets(hospital_df, patient_df)
+        hospital_path, patient_path = save_datasets(
+            hospital_df, patient_df, truth_df=truth_df
+        )
     except Exception as exc:  # beginner-friendly surface error
         raise SystemExit(f"Data generation failed: {exc}") from exc
 

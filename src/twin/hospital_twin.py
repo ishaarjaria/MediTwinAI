@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, fields
+import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -90,6 +91,124 @@ def compute_available_beds(total_beds: int, occupied_beds: int) -> int:
     return int(total_beds - occupied_beds)
 
 
+def _validate_state_values(state: HospitalState) -> None:
+    """Reject invalid operational inputs before they can enter the twin."""
+    count_fields = (
+        "total_beds",
+        "occupied_beds",
+        "total_icu_beds",
+        "occupied_icu_beds",
+        "current_opd",
+        "emergency_cases",
+        "doctors_available",
+        "nurses_available",
+        "medicine_stock",
+        "admissions",
+        "discharges",
+    )
+    for name in count_fields:
+        value = getattr(state, name)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{name} must be a non-negative integer.")
+        if not math.isfinite(float(value)) or float(value) < 0 or not float(value).is_integer():
+            raise ValueError(f"{name} must be a non-negative integer.")
+        setattr(state, name, int(value))
+
+    if state.total_beds == 0 or state.total_icu_beds == 0:
+        raise ValueError("Bed and ICU capacities must be greater than zero.")
+
+    wait = state.average_waiting_time
+    if isinstance(wait, bool) or not isinstance(wait, (int, float)):
+        raise ValueError("average_waiting_time must be a finite non-negative number.")
+    if not math.isfinite(float(wait)) or float(wait) < 0:
+        raise ValueError("average_waiting_time must be a finite non-negative number.")
+    state.average_waiting_time = float(wait)
+
+    for name in ("is_weekend", "is_holiday"):
+        value = getattr(state, name)
+        if isinstance(value, bool):
+            value = int(value)
+        if not isinstance(value, (int, float)) or value not in (0, 1):
+            raise ValueError(f"{name} must be 0 or 1.")
+        setattr(state, name, int(value))
+
+    if not isinstance(state.day_of_week, int) or not 0 <= state.day_of_week <= 6:
+        raise ValueError("day_of_week must be an integer between 0 and 6.")
+    if not isinstance(state.month, int) or not 1 <= state.month <= 12:
+        raise ValueError("month must be an integer between 1 and 12.")
+    if not isinstance(state.notes, list) or not all(
+        isinstance(note, str) for note in state.notes
+    ):
+        raise ValueError("notes must be a list of strings.")
+
+    try:
+        parsed_date = pd.Timestamp(state.as_of_date)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("as_of_date must be a valid date.") from exc
+    if pd.isna(parsed_date):
+        raise ValueError("as_of_date must be a valid date.")
+    state.as_of_date = parsed_date.strftime("%Y-%m-%d")
+
+
+def waiting_time_features(
+    *,
+    opd: int,
+    emergency: int,
+    doctors: int,
+    nurses: int,
+    is_weekend: int,
+    is_holiday: int,
+    day_of_week: int,
+    month: int,
+    bed_occupancy: float,
+    admissions: int,
+) -> dict[str, Any]:
+    """The single place that turns operational values into waiting-time model inputs."""
+    return {
+        "opd_patients": opd,
+        "emergency_patients": emergency,
+        "doctors_available": doctors,
+        "nurses_available": nurses,
+        "is_weekend": is_weekend,
+        "is_holiday": is_holiday,
+        "day_of_week": day_of_week,
+        "month": month,
+        "bed_occupancy_percentage": bed_occupancy,
+        "admissions": admissions,
+    }
+
+
+# Provenance of every twin value. "observed" = a recorded value in the synthetic
+# daily dataset; "ml_prediction" = output of a trained model; "rule_derived" =
+# arithmetic or a transparent heuristic (including values carried forward).
+CURRENT_FIELD_SOURCES: dict[str, str] = {
+    "occupied_beds": "observed",
+    "available_beds": "observed",
+    "bed_occupancy_percentage": "observed",
+    "occupied_icu_beds": "observed",
+    "icu_occupancy_percentage": "observed",
+    "current_opd": "observed",
+    "emergency_cases": "observed",
+    "doctors_available": "observed",
+    "nurses_available": "observed",
+    "average_waiting_time": "observed",
+    "medicine_stock": "observed",
+}
+PREDICTED_FIELD_SOURCES: dict[str, str] = {
+    "occupied_beds": "rule_derived",  # heuristic: 2% of forecast OPD change
+    "available_beds": "rule_derived",
+    "bed_occupancy_percentage": "rule_derived",
+    "occupied_icu_beds": "rule_derived",  # heuristic: 15% of emergency change
+    "icu_occupancy_percentage": "rule_derived",
+    "current_opd": "ml_prediction",  # trained OPD forecaster
+    "emergency_cases": "rule_derived",  # held at today's level, weekend uplift
+    "doctors_available": "rule_derived",  # carried forward from today
+    "nurses_available": "rule_derived",  # carried forward from today
+    "average_waiting_time": "ml_prediction",  # trained waiting-time model
+    "medicine_stock": "rule_derived",  # drawdown only if OPD rises
+}
+
+
 def compute_capacity_status(
     bed_occupancy_percentage: float,
     icu_occupancy_percentage: float,
@@ -107,7 +226,7 @@ def compute_capacity_status(
         ("bed_occupancy_percentage", bed_occupancy_percentage),
         ("icu_occupancy_percentage", icu_occupancy_percentage),
     ):
-        if val < 0 or val > 100:
+        if not math.isfinite(float(val)) or val < 0 or val > 100:
             raise ValueError(f"{key} must be between 0 and 100 (got {val})")
 
     worst = max(float(bed_occupancy_percentage), float(icu_occupancy_percentage))
@@ -119,8 +238,8 @@ def compute_capacity_status(
 
     if average_waiting_time is not None:
         wait = float(average_waiting_time)
-        if wait < 0:
-            raise ValueError("average_waiting_time cannot be negative")
+        if not math.isfinite(wait) or wait < 0:
+            raise ValueError("average_waiting_time must be finite and non-negative")
         order = ["Normal", "Moderate", "High", "Critical"]
         idx = order.index(status)
         if wait >= _WAIT_CRITICAL:
@@ -134,6 +253,7 @@ def compute_capacity_status(
 
 def _recompute_derived_fields(state: HospitalState) -> HospitalState:
     """Keep available beds, occupancy %, and capacity_status consistent."""
+    _validate_state_values(state)
     state.available_beds = compute_available_beds(
         state.total_beds, state.occupied_beds
     )
@@ -284,32 +404,55 @@ class HospitalDigitalTwin:
             "bed_occupancy_percentage",
             "icu_occupancy_percentage",
         }
-        # Allow direct occupancy updates via occupied_* ; derived fields recomputed.
-        allowed |= {
-            "available_beds",
-            "bed_occupancy_percentage",
-            "icu_occupancy_percentage",
-            "notes",
-        }
+        allowed.add("notes")
 
-        unknown = set(updates) - {f.name for f in fields(HospitalState)}
+        unknown = set(updates) - allowed
         if unknown:
-            raise ValueError(f"Unknown state fields: {sorted(unknown)}")
+            raise ValueError(
+                "Unknown or derived state fields cannot be updated: "
+                f"{sorted(unknown)}"
+            )
 
+        candidate = deepcopy(self._state)
         for key, value in updates.items():
-            setattr(self._state, key, value)
+            setattr(candidate, key, value)
 
-        # If caller set occupancy % directly without occupied counts, trust counts first.
-        self._state = _recompute_derived_fields(self._state)
+        # Validate and recompute before committing, so failed updates are atomic.
+        candidate = _recompute_derived_fields(candidate)
+        self._state = candidate
         self._history.append(deepcopy(self._state))
         return self.get_current_state()
+
+    def model_waiting_time(self, state: HospitalState | None = None) -> float:
+        """
+        Waiting time (minutes) the trained model assigns to ``state``'s own inputs.
+
+        Use this - not the observed ``average_waiting_time`` - when comparing
+        today with a predicted day, so both sides come from the same model and
+        the same feature builder. Defaults to the twin's current state.
+        """
+        state = state or self._state
+        features = waiting_time_features(
+            opd=state.current_opd,
+            emergency=state.emergency_cases,
+            doctors=state.doctors_available,
+            nurses=state.nurses_available,
+            is_weekend=state.is_weekend,
+            is_holiday=state.is_holiday,
+            day_of_week=state.day_of_week,
+            month=state.month,
+            bed_occupancy=state.bed_occupancy_percentage,
+            admissions=state.admissions,
+        )
+        out = self.service.predict_waiting_time(features)
+        return float(out.iloc[0]["predicted_waiting_time_minutes"])
 
     def get_predicted_state(self, days_ahead: int = 1) -> HospitalState:
         """
         Build a predicted near-future state using ML outputs.
 
         Uses:
-        - Prophet OPD forecast for horizon ``days_ahead``
+        - ML OPD forecast for horizon ``days_ahead``
         - Waiting-time model with forecasted OPD and current staffing/calendar
         - Isolation Forest anomaly flag on the projected operational vector
 
@@ -360,18 +503,19 @@ class HospitalDigitalTwin:
         )
         icu_pct = compute_occupancy_percentage(projected_icu, current.total_icu_beds)
 
-        wait_input = {
-            "opd_patients": predicted_opd,
-            "emergency_patients": projected_emergency,
-            "doctors_available": current.doctors_available,
-            "nurses_available": current.nurses_available,
-            "is_weekend": is_weekend,
-            "is_holiday": current.is_holiday,  # unknown future holidays -> carry flag
-            "day_of_week": day_of_week,
-            "month": month,
-            "bed_occupancy_percentage": bed_pct,
-            "admissions": current.admissions,
-        }
+        # Same feature builder and model as ``model_waiting_time`` (equivalent inputs).
+        wait_input = waiting_time_features(
+            opd=predicted_opd,
+            emergency=projected_emergency,
+            doctors=current.doctors_available,
+            nurses=current.nurses_available,
+            is_weekend=is_weekend,
+            is_holiday=current.is_holiday,  # unknown future holidays -> carry flag
+            day_of_week=day_of_week,
+            month=month,
+            bed_occupancy=bed_pct,
+            admissions=current.admissions,
+        )
         wait_pred = self.service.predict_waiting_time(wait_input)
         predicted_wait = float(wait_pred.iloc[0]["predicted_waiting_time_minutes"])
 
@@ -392,7 +536,7 @@ class HospitalDigitalTwin:
 
         notes = [
             "Predicted state is a data-driven software estimate (not IoT live data).",
-            f"OPD forecast (Prophet) for {forecast_date.date()}: {predicted_opd}",
+            f"OPD forecast ({self.service.opd_model_name}) for {forecast_date.date()}: {predicted_opd}",
             f"Predicted waiting time (ML): {predicted_wait:.1f} min",
         ]
         if anom_flag:
@@ -458,6 +602,9 @@ __all__ = [
     "compute_occupancy_percentage",
     "compute_available_beds",
     "compute_capacity_status",
+    "waiting_time_features",
+    "CURRENT_FIELD_SOURCES",
+    "PREDICTED_FIELD_SOURCES",
     "hospital_state_from_row",
     "build_twin_from_latest",
 ]

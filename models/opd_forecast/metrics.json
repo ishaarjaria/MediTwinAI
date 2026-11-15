@@ -1,18 +1,145 @@
 {
   "task": "opd_forecasting",
-  "model": "prophet",
-  "split": "chronological",
-  "holdout_days": 30,
-  "n_train": 336,
-  "n_test": 30,
-  "train_end_date": "2024-12-01",
+  "model": "XGBoost (calendar + seasonal lags)",
+  "selected_model": "XGBoost (calendar + seasonal lags)",
+  "selection_rule": "lowest validation MAE among all evaluated candidates",
+  "split": "chronological train / validation / test",
+  "validation_days": 30,
+  "test_days": 30,
+  "n_train": 278,
+  "train_end_date": "2024-11-01",
+  "validation_start_date": "2024-11-02",
   "test_start_date": "2024-12-02",
   "test_end_date": "2024-12-31",
-  "metrics_holdout": {
-    "mae": 93.20342894285825,
-    "rmse": 102.09294085336617
+  "evaluation_horizon": "each day scored as a forecast of at most 7 days ahead",
+  "metrics_validation": {
+    "mae": 26.300337727864584,
+    "mse": 1104.313097165261,
+    "rmse": 33.23120667633454,
+    "r2": 0.8121455029677104
   },
-  "model_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\prophet_model.joblib",
-  "holdout_predictions_path": "C:\\Users\\Isha Arjaria\\OneDrive\\Desktop\\Isha\\BMU\\Sem 5\\Artificial Intelligence\\Project\\meditwin-ai\\models\\opd_forecast\\holdout_predictions.csv",
-  "note": "Holdout metrics are from a model fit on data before the holdout. Saved artifact is refit on the full series for future 7-day forecasts."
+  "metrics_holdout": {
+    "mae": 34.0373031616211,
+    "mse": 1733.680690090366,
+    "rmse": 41.637491400063546,
+    "r2": 0.7492490838045227
+  },
+  "comparison": [
+    {
+      "model": "Training mean",
+      "type": "baseline",
+      "validation": {
+        "mae": 63.27721822541967,
+        "mse": 6246.238479719819,
+        "rmse": 79.03314798057724,
+        "r2": -0.06254647433191018
+      },
+      "test": {
+        "mae": 76.47705627705628,
+        "mse": 7101.443964693316,
+        "rmse": 84.2700656502255,
+        "r2": -0.027117387092126632
+      }
+    },
+    {
+      "model": "Day-of-week mean",
+      "type": "baseline",
+      "validation": {
+        "mae": 27.61294871794872,
+        "mse": 1179.1560850865658,
+        "rmse": 34.338842221114064,
+        "r2": 0.7994139761131969
+      },
+      "test": {
+        "mae": 34.00151515151514,
+        "mse": 2737.8727961432514,
+        "rmse": 52.324686297609574,
+        "r2": 0.6040077529941172
+      }
+    },
+    {
+      "model": "Previous week, same day",
+      "type": "baseline",
+      "validation": {
+        "mae": 37.266666666666666,
+        "mse": 2699.2,
+        "rmse": 51.95382565317014,
+        "r2": 0.5408395864441379
+      },
+      "test": {
+        "mae": 41.56666666666667,
+        "mse": 4348.033333333334,
+        "rmse": 65.93961884431342,
+        "r2": 0.37112217479622545
+      }
+    },
+    {
+      "model": "Same weekday, last 4 weeks average",
+      "type": "baseline",
+      "validation": {
+        "mae": 31.983333333333334,
+        "mse": 1569.1083333333333,
+        "rmse": 39.611972095988015,
+        "r2": 0.7330792711739468
+      },
+      "test": {
+        "mae": 37.50833333333333,
+        "mse": 3296.985416666667,
+        "rmse": 57.41938189032225,
+        "r2": 0.5231404960337868
+      }
+    },
+    {
+      "model": "Ridge (calendar + seasonal lags)",
+      "type": "model",
+      "validation": {
+        "mae": 27.576312052129087,
+        "mse": 1138.5403503268644,
+        "rmse": 33.74226356258371,
+        "r2": 0.8063231112529197
+      },
+      "test": {
+        "mae": 30.717274183707705,
+        "mse": 1438.8535899603057,
+        "rmse": 37.93222363585222,
+        "r2": 0.7918914030617181
+      }
+    },
+    {
+      "model": "XGBoost (calendar + seasonal lags)",
+      "type": "model",
+      "validation": {
+        "mae": 26.300337727864584,
+        "mse": 1104.313097165261,
+        "rmse": 33.23120667633454,
+        "r2": 0.8121455029677104
+      },
+      "test": {
+        "mae": 34.0373031616211,
+        "mse": 1733.680690090366,
+        "rmse": 41.637491400063546,
+        "r2": 0.7492490838045227
+      }
+    },
+    {
+      "model": "Prophet (weekly + calendar)",
+      "type": "model",
+      "skipped_reason": "RuntimeError: Failed with error [WinError 4551] An Application Control policy has blocked this file"
+    }
+  ],
+  "best_baseline_by_validation": "Day-of-week mean",
+  "best_baseline_by_test": "Day-of-week mean",
+  "selected_beats_best_baseline_on_test": false,
+  "interval": {
+    "method": "empirical absolute-residual quantile (validation)",
+    "nominal": 0.8,
+    "halfwidth": 45.67589111328128,
+    "coverage_validation": 0.8,
+    "coverage_test": 0.7,
+    "validated_80pct": false
+  },
+  "prophet_note": "RuntimeError: Failed with error [WinError 4551] An Application Control policy has blocked this file",
+  "model_path": "forecaster.joblib",
+  "holdout_predictions_path": "holdout_predictions.csv",
+  "note": "Metrics come from models fit only on data before each evaluated block. The saved artifact is refit on all data for future forecasts."
 }

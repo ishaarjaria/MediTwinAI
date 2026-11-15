@@ -17,16 +17,41 @@ Two kinds of estimates are kept separate:
     and staff pressure use the formulas in this file. There is no trained
     model for those outputs.
 
+Fair comparison (Phase 5 fix)
+    The "current" and "simulated" waiting times are BOTH produced by the same
+    waiting-time model, with the same feature builder. The observed waiting
+    time from the dataset is reported separately
+    (``WhatIfResult.observed_waiting_time``) and is never compared with a
+    model output. A scenario with no changes therefore gives identical
+    current and simulated predictions.
+
+Assumptions and limitations
+    * Bed demand scales with a weighted OPD + emergency volume ratio
+      (a simplification of the generator's admissions/discharge flow).
+    * ICU demand changes by 0.25 per extra emergency case and 0.02 per extra
+      occupied bed (the Phase 1 generator's ICU formula), applied as a delta
+      to the baseline ICU occupancy.
+    * Medicine consumption and admissions use the Phase 1 generator's
+      coefficients. All of these are rules, not fitted models.
+    * Waiting time depends only on the 10 features of the saved model. It is
+      trained on one year of synthetic data, so its response to a single
+      knob (for example nurses, whose counts correlate with OPD volume in
+      that data) is a statistical association, not a causal staffing effect.
+    * The model rejects inputs outside its validated ranges; such scenarios
+      raise ScenarioError instead of returning a guess.
+
 This is an educational software scenario tool. It is not a live hospital
 control system.
 """
 
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.models.prediction_service import PredictionServiceError
 from src.twin.hospital_twin import (
     HospitalState,
     compute_available_beds,
@@ -50,6 +75,10 @@ _MED_PER_OPD = 0.8
 _MED_PER_EMERGENCY = 2.5
 _MED_PER_ADMISSION = 1.2
 
+# ICU demand from the Phase 1 generator: 0.17*emergency + 0.045*occupied_beds.
+_ICU_PER_EMERGENCY = 0.17
+_ICU_PER_OCCUPIED_BED = 0.045
+
 
 class ScenarioError(ValueError):
     """Raised when a what-if scenario is impossible or inconsistent."""
@@ -70,6 +99,9 @@ class ScenarioChanges:
     doctors_available: int | None = None
     nurses_available: int | None = None
     emergency_cases_percent: float = 0.0
+    # Change in the medicine stock on hand at the start of the scenario day
+    # (e.g. -60 models a late or short delivery). Relative to the baseline.
+    medicine_stock_percent: float = 0.0
 
     def describe(self) -> list[str]:
         lines: list[str] = []
@@ -89,6 +121,10 @@ class ScenarioChanges:
             lines.append(f"Doctors available set to {self.doctors_available}.")
         if self.nurses_available is not None:
             lines.append(f"Nurses available set to {self.nurses_available}.")
+        if self.medicine_stock_percent:
+            lines.append(
+                f"Medicine stock on hand {self.medicine_stock_percent:+.1f}% versus baseline."
+            )
         if not lines:
             lines.append("No scenario changes; simulated volumes match the baseline.")
         return lines
@@ -131,9 +167,19 @@ class WhatIfResult:
     bed_shortfall: int = 0
     icu_shortfall: int = 0
     ml_notes: list[str] = field(default_factory=list)
+    # Model prediction for the unchanged baseline (None if no model was used).
+    baseline_predicted_waiting_time: float | None = None
+    # Observed dataset value. Informational only; never compared to the model.
+    observed_waiting_time: float = 0.0
+    # Capacity status of the baseline using the same waiting-time source as the
+    # simulated state, so the two statuses are comparable.
+    baseline_capacity_status: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "baseline_predicted_waiting_time": self.baseline_predicted_waiting_time,
+            "observed_waiting_time": self.observed_waiting_time,
+            "baseline_capacity_status": self.baseline_capacity_status,
             "baseline": self.baseline.to_dict(),
             "simulated_state": self.simulated_state.to_dict(),
             "changes": self.changes.describe(),
@@ -227,17 +273,75 @@ def _explain_change(name: str, current: float, simulated: float, source: str) ->
     )
 
 
+def _require_number(name: str, value: Any) -> float:
+    """Return value as a finite float, or raise a clear ScenarioError."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ScenarioError(f"{name} must be a number (got {value!r}).")
+    if not math.isfinite(float(value)):
+        raise ScenarioError(f"{name} must be finite (got {value!r}).")
+    return float(value)
+
+
+def _require_count(name: str, value: Any, *, minimum: int) -> int:
+    """Return value as an integer count >= minimum, or raise ScenarioError."""
+    number = _require_number(name, value)
+    if not number.is_integer():
+        raise ScenarioError(f"{name} must be a whole number (got {value!r}).")
+    if number < minimum:
+        qualifier = "greater than 0" if minimum == 1 else "non-negative"
+        raise ScenarioError(f"{name} must be {qualifier} (got {value!r}).")
+    return int(number)
+
+
+def _validate_baseline(baseline: HospitalState) -> None:
+    """Reject impossible baseline states before they can be simulated."""
+    for name in (
+        "current_opd",
+        "emergency_cases",
+        "admissions",
+        "discharges",
+        "occupied_beds",
+        "occupied_icu_beds",
+        "doctors_available",
+        "nurses_available",
+        "medicine_stock",
+    ):
+        _require_count(f"Baseline {name}", getattr(baseline, name), minimum=0)
+    total_beds = _require_count("Baseline total_beds", baseline.total_beds, minimum=1)
+    total_icu = _require_count(
+        "Baseline total_icu_beds", baseline.total_icu_beds, minimum=1
+    )
+    if baseline.occupied_beds > total_beds:
+        raise ScenarioError("Baseline occupied beds exceed total beds.")
+    if baseline.occupied_icu_beds > total_icu:
+        raise ScenarioError("Baseline occupied ICU beds exceed ICU capacity.")
+    _require_number("Baseline average_waiting_time", baseline.average_waiting_time)
+    if baseline.average_waiting_time < 0:
+        raise ScenarioError("Baseline average waiting time cannot be negative.")
+
+
 def _validate_changes(changes: ScenarioChanges, baseline: HospitalState) -> None:
-    if changes.total_beds is not None and changes.total_beds <= 0:
-        raise ScenarioError("Total bed capacity must be greater than 0.")
-    if changes.icu_capacity is not None and changes.icu_capacity <= 0:
-        raise ScenarioError("ICU capacity must be greater than 0.")
-    if changes.doctors_available is not None and changes.doctors_available < 0:
-        raise ScenarioError("Doctors available cannot be negative.")
-    if changes.nurses_available is not None and changes.nurses_available < 0:
-        raise ScenarioError("Nurses available cannot be negative.")
-    _scale_percent(baseline.current_opd, changes.patient_inflow_percent)
-    _scale_percent(baseline.emergency_cases, changes.emergency_cases_percent)
+    _validate_baseline(baseline)
+    if changes.total_beds is not None:
+        _require_count("Total bed capacity", changes.total_beds, minimum=1)
+    if changes.icu_capacity is not None:
+        _require_count("ICU capacity", changes.icu_capacity, minimum=1)
+    if changes.doctors_available is not None:
+        _require_count("Doctors available", changes.doctors_available, minimum=0)
+    if changes.nurses_available is not None:
+        _require_count("Nurses available", changes.nurses_available, minimum=0)
+    for label, pct, base in (
+        ("Patient inflow percent", changes.patient_inflow_percent, baseline.current_opd),
+        (
+            "Emergency cases percent",
+            changes.emergency_cases_percent,
+            baseline.emergency_cases,
+        ),
+    ):
+        _require_number(label, pct)
+        _scale_percent(base, pct)
+    _require_number("Medicine stock percent", changes.medicine_stock_percent)
+    _scale_percent(baseline.medicine_stock, changes.medicine_stock_percent)
 
 
 class WhatIfSimulator:
@@ -306,12 +410,12 @@ class WhatIfSimulator:
         available_beds = compute_available_beds(total_beds, occupied_beds)
         bed_occupancy = compute_occupancy_percentage(occupied_beds, total_beds)
 
-        # ICU demand follows emergency volume. Capacity is a separate knob.
-        if baseline.emergency_cases <= 0:
-            icu_ratio = 1.0 if sim_emergency == 0 else float(sim_emergency)
-        else:
-            icu_ratio = sim_emergency / baseline.emergency_cases
-        icu_requirement = max(0, int(round(baseline.occupied_icu_beds * icu_ratio)))
+        # ICU demand: baseline plus the generator's marginal effects of extra
+        # emergencies and extra occupied beds. Capacity is a separate knob.
+        icu_delta = _ICU_PER_EMERGENCY * (
+            sim_emergency - baseline.emergency_cases
+        ) + _ICU_PER_OCCUPIED_BED * (bed_requirement - baseline.occupied_beds)
+        icu_requirement = max(0, int(round(baseline.occupied_icu_beds + icu_delta)))
         icu_capacity = (
             changes.icu_capacity
             if changes.icu_capacity is not None
@@ -340,21 +444,30 @@ class WhatIfSimulator:
         )
         sim_medicine = medicine_consumption(sim_opd, sim_emergency, sim_admissions)
         extra_medicine = max(0.0, sim_medicine - base_medicine)
-        projected_stock = max(0, int(round(baseline.medicine_stock - extra_medicine)))
+        start_stock = _scale_percent(baseline.medicine_stock, changes.medicine_stock_percent)
+        projected_stock = max(0, int(round(start_stock - extra_medicine)))
 
         base_pressure = staff_pressure(
             base_load, baseline.doctors_available, baseline.nurses_available
         )
         sim_pressure = staff_pressure(sim_load, doctors, nurses)
 
-        waiting, wait_source, ml_notes = self._waiting_time(
+        # Baseline and scenario are scored by the same model with the same
+        # feature builder. Bed occupancy for the baseline is derived from its
+        # counts exactly as it is for the scenario.
+        base_bed_occupancy = compute_occupancy_percentage(
+            baseline.occupied_beds, baseline.total_beds
+        )
+        base_wait, waiting, wait_source, ml_notes = self._waiting_times(
             baseline=baseline,
+            base_bed_occupancy=base_bed_occupancy,
             opd=sim_opd,
             emergency=sim_emergency,
             doctors=doctors,
             nurses=nurses,
             bed_occupancy=bed_occupancy,
             admissions=sim_admissions,
+            changes=changes,
         )
 
         if bed_occupancy < 0 or icu_occupancy < 0:
@@ -417,7 +530,7 @@ class WhatIfSimulator:
             ),
             self._metric(
                 "expected_waiting_time_minutes",
-                baseline.average_waiting_time,
+                base_wait,
                 waiting,
                 wait_source,
             ),
@@ -425,6 +538,18 @@ class WhatIfSimulator:
                 "medicine_consumption_units",
                 base_medicine,
                 sim_medicine,
+                SOURCE_RULE,
+            ),
+            self._metric(
+                "medicine_stock_units",
+                baseline.medicine_stock,
+                projected_stock,
+                SOURCE_RULE,
+            ),
+            self._metric(
+                "medicine_days_of_cover",
+                baseline.medicine_stock / base_medicine if base_medicine > 0 else 0.0,
+                projected_stock / sim_medicine if sim_medicine > 0 else 0.0,
                 SOURCE_RULE,
             ),
             self._metric(
@@ -458,6 +583,15 @@ class WhatIfSimulator:
             bed_shortfall=bed_shortfall,
             icu_shortfall=icu_shortfall,
             ml_notes=ml_notes,
+            baseline_predicted_waiting_time=(
+                base_wait if wait_source == SOURCE_ML else None
+            ),
+            observed_waiting_time=float(baseline.average_waiting_time),
+            baseline_capacity_status=compute_capacity_status(
+                baseline.bed_occupancy_percentage,
+                baseline.icu_occupancy_percentage,
+                base_wait,
+            ),
         )
 
     @staticmethod
@@ -474,19 +608,19 @@ class WhatIfSimulator:
             explanation=_explain_change(name, current_r, simulated_r, source),
         )
 
-    def _waiting_time(
-        self,
+    @staticmethod
+    def _wait_features(
         baseline: HospitalState,
+        *,
         opd: int,
         emergency: int,
         doctors: int,
         nurses: int,
         bed_occupancy: float,
         admissions: int,
-    ) -> tuple[float, str, list[str]]:
-        """Ask the waiting-time model. Do not invent a score if it is missing."""
-        service = self._resolve_service()
-        features = {
+    ) -> dict[str, Any]:
+        """Single feature builder shared by the baseline and the scenario."""
+        return {
             "opd_patients": opd,
             "emergency_patients": emergency,
             "doctors_available": doctors,
@@ -498,30 +632,94 @@ class WhatIfSimulator:
             "bed_occupancy_percentage": bed_occupancy,
             "admissions": admissions,
         }
+
+    @staticmethod
+    def _score(service: Any, features: dict[str, Any]) -> float:
+        predicted = service.predict_waiting_time(features)
+        return max(0.0, float(predicted.iloc[0]["predicted_waiting_time_minutes"]))
+
+    def _waiting_times(
+        self,
+        baseline: HospitalState,
+        base_bed_occupancy: float,
+        opd: int,
+        emergency: int,
+        doctors: int,
+        nurses: int,
+        bed_occupancy: float,
+        admissions: int,
+        changes: ScenarioChanges,
+    ) -> tuple[float, float, str, list[str]]:
+        """
+        Return (baseline_wait, simulated_wait, source, notes).
+
+        Both values come from the same model. If no model is available the
+        observed baseline value is returned for BOTH sides (zero difference,
+        clearly labelled unavailable) so no fake score is ever shown.
+        """
+        observed = float(baseline.average_waiting_time)
+        service = self._resolve_service()
         if service is None or not hasattr(service, "predict_waiting_time"):
             return (
-                float(baseline.average_waiting_time),
-                "unavailable (no waiting-time model loaded; baseline value kept)",
+                observed,
+                observed,
+                "unavailable (no waiting-time model loaded; observed value shown for both)",
                 [
                     "Waiting time was not re-estimated. No model was loaded, "
                     "and no rule was labelled as an ML prediction."
                 ],
             )
+
+        base_features = self._wait_features(
+            baseline,
+            opd=baseline.current_opd,
+            emergency=baseline.emergency_cases,
+            doctors=baseline.doctors_available,
+            nurses=baseline.nurses_available,
+            bed_occupancy=base_bed_occupancy,
+            admissions=baseline.admissions,
+        )
+        sim_features = self._wait_features(
+            baseline,
+            opd=opd,
+            emergency=emergency,
+            doctors=doctors,
+            nurses=nurses,
+            bed_occupancy=bed_occupancy,
+            admissions=admissions,
+        )
         try:
-            predicted = service.predict_waiting_time(features)
-            minutes = float(predicted.iloc[0]["predicted_waiting_time_minutes"])
+            base_wait = self._score(service, base_features)
+            sim_wait = self._score(service, sim_features)
+        except PredictionServiceError as exc:
+            raise ScenarioError(
+                "The scenario or baseline is outside the waiting-time model's "
+                f"supported input range: {exc}"
+            ) from exc
         except Exception as exc:
             return (
-                float(baseline.average_waiting_time),
-                "unavailable (waiting-time model rejected the scenario inputs)",
+                observed,
+                observed,
+                "unavailable (waiting-time model could not score the inputs)",
                 [
                     "Waiting time was not re-estimated because the model "
-                    f"could not score this scenario ({exc}). Baseline value kept."
+                    f"failed ({exc}). Observed value shown for both sides."
                 ],
             )
-        if minutes < 0:
-            minutes = 0.0
-        return minutes, SOURCE_ML, []
+
+        notes = [
+            "Both current and simulated waiting times are model predictions "
+            f"(baseline predicted {base_wait:.2f} min; observed value in the "
+            f"dataset was {observed:.2f} min and is not used in the comparison)."
+        ]
+        if changes.nurses_available is not None:
+            notes.append(
+                "Nurse count is correlated with OPD volume in the synthetic "
+                "training data, so the model may show little or no waiting-time "
+                "benefit from more nurses. This is a statistical association, "
+                "not a staffing-effect claim."
+            )
+        return base_wait, sim_wait, SOURCE_ML, notes
 
 
 def simulate_what_if(

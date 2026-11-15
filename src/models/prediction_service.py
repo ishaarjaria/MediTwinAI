@@ -6,7 +6,7 @@ prediction helpers for:
 
 - patient risk classification
 - waiting-time regression
-- OPD forecasting (Prophet)
+- OPD forecasting (best model chosen on held-out data; see models/opd_forecast/metrics.json)
 - hospital anomaly detection
 
 This is a software service over saved Joblib artifacts — not a live
@@ -102,8 +102,26 @@ class PredictionService:
     def _load_all(self) -> None:
         self._patient_risk = self._load_joblib("patient_risk/best_pipeline.joblib")
         self._waiting_time = self._load_joblib("waiting_time/best_pipeline.joblib")
-        self._opd_forecast = self._load_joblib("opd_forecast/prophet_model.joblib")
+        self._opd_forecast = self._load_joblib("opd_forecast/forecaster.joblib")
         self._anomaly = self._load_joblib("anomaly_detection/isolation_forest.joblib")
+
+    @property
+    def opd_model_name(self) -> str:
+        """Display name of the deployed OPD forecasting model."""
+        assert self._opd_forecast is not None
+        return str(self._opd_forecast.get("model_name", "OPD forecaster"))
+
+    @property
+    def patient_risk_model_name(self) -> str:
+        """Display name of the deployed patient-risk classifier."""
+        assert self._patient_risk is not None
+        return str(self._patient_risk.get("model_name", "patient risk model"))
+
+    @property
+    def opd_interval_note(self) -> str:
+        """How the forecast band was built and how well it covered held-out days."""
+        assert self._opd_forecast is not None
+        return str(self._opd_forecast.get("interval_note", ""))
 
     @property
     def is_ready(self) -> bool:
@@ -201,6 +219,19 @@ class PredictionService:
                     )
 
         self._check_bounds(df, _PATIENT_BOUNDS, "Patient risk")
+
+        systolic = pd.to_numeric(df["systolic_bp"])
+        diastolic = pd.to_numeric(df["diastolic_bp"])
+        if (systolic <= diastolic).any():
+            raise PredictionServiceError(
+                "Patient risk: systolic_bp must be greater than diastolic_bp."
+            )
+        if not np.allclose(
+            pd.to_numeric(df["pulse_pressure"]), systolic - diastolic
+        ):
+            raise PredictionServiceError(
+                "Patient risk: pulse_pressure must equal systolic_bp - diastolic_bp."
+            )
         return df
 
     def _prepare_waiting_frame(
@@ -291,7 +322,7 @@ class PredictionService:
         return out
 
     def forecast_opd(self, days: int = 7) -> pd.DataFrame:
-        """Return a multi-day OPD demand forecast from the saved Prophet model."""
+        """Return a multi-day OPD demand forecast from the deployed forecaster."""
         if not isinstance(days, int) or isinstance(days, bool):
             raise PredictionServiceError("forecast_opd: 'days' must be an integer.")
         if days < 1 or days > 90:

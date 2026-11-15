@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local environments and secrets
+.venv/
+.streamlit/secrets.toml
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local training logs
+patient_risk_train_out.txt
+prophet_install_log.txt
+train_all_log.txt
+train_all_out.txt

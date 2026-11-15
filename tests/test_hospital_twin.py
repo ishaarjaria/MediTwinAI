@@ -161,6 +161,26 @@ class TestTwinUpdateState(unittest.TestCase):
         with self.assertRaises(ValueError):
             twin.update_state(not_a_real_field=1)
 
+    def test_update_state_rejects_impossible_values_atomically(self):
+        twin = self._make_twin()
+        with self.assertRaises(ValueError):
+            twin.update_state(current_opd=-1)
+        self.assertEqual(twin.get_current_state().current_opd, 200)
+
+        with self.assertRaises(ValueError):
+            twin.update_state(average_waiting_time=float("nan"))
+        self.assertEqual(twin.get_current_state().average_waiting_time, 20.0)
+
+        with self.assertRaises(ValueError):
+            twin.update_state(month=13)
+        self.assertEqual(twin.get_current_state().month, 1)
+
+    def test_update_state_rejects_derived_fields(self):
+        twin = self._make_twin()
+        with self.assertRaises(ValueError):
+            twin.update_state(available_beds=999)
+        self.assertEqual(twin.get_current_state().available_beds, 150)
+
 
 if __name__ == "__main__":
     unittest.main()
