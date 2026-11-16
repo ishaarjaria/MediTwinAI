@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+from functools import lru_cache
 from pathlib import Path
 
 import streamlit as st
@@ -54,5 +56,20 @@ def footer() -> None:
 
 
 def preview_src(name: str) -> str | None:
-    """URL of a bundled preview image, or ``None`` if it has not been generated."""
-    return f"/app/static/{name}" if (STATIC / name).exists() else None
+    """Self-contained ``data:`` URI of a bundled preview image, or ``None`` if the file is missing.
+
+    The image is embedded in the page instead of linked through ``/app/static/``, so it does not
+    depend on static serving, the URL prefix or the host's file layout.
+    """
+    return _data_uri(name)
+
+
+@lru_cache(maxsize=None)
+def _data_uri(name: str) -> str | None:
+    path = STATIC / name
+    if not path.is_file():
+        return None
+    mime = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}.get(path.suffix.lower())
+    if mime is None:
+        return None
+    return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"

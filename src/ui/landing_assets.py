@@ -232,5 +232,6 @@ def browser_frame(src: str, alt: str, url_label: str = "meditwin · workspace") 
     return (
         '<div class="lp-frame"><div class="lp-frame-bar"><i></i><i></i><i></i>'
         f'<span>{escape(url_label)}</span></div>'
-        f'<img src="{escape(src, quote=True)}" alt="{escape(alt, quote=True)}" loading="lazy"/></div>'
+        '<div class="lp-shot">'
+        f'<img src="{escape(src, quote=True)}" alt="{escape(alt, quote=True)}" width="1200" height="750"/></div></div>'
     )

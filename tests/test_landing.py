@@ -85,11 +85,20 @@ class TestPreviewScreenshots(unittest.TestCase):
             self.assertEqual(path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n", filename)
             self.assertTrue(alt)
 
-    def test_preview_url_uses_streamlit_static_serving(self):
-        self.assertEqual(common.preview_src("preview-overview.png"), "/app/static/preview-overview.png")
+    def test_preview_is_embedded_not_linked_to_a_server_path(self):
+        import base64
+
+        for _label, filename, _alt, _slug in landing.PREVIEWS:
+            src = common.preview_src(filename)
+            self.assertTrue(src.startswith("data:image/png;base64,"), filename)
+            self.assertEqual(base64.b64decode(src.split(",", 1)[1]), (common.STATIC / filename).read_bytes())
         self.assertIsNone(common.preview_src("does-not-exist.png"))
-        config = (ROOT / ".streamlit" / "config.toml").read_text(encoding="utf8")
-        self.assertIn("enableStaticServing = true", config)
+
+    def test_preview_frame_has_stable_aspect_ratio(self):
+        html = art.browser_frame("data:image/png;base64,AAAA", "alt text", "x")
+        self.assertIn('width="1200" height="750"', html)
+        self.assertIn("aspect-ratio:1200 / 750", theme.CSS + theme.LANDING_CSS)
+        self.assertIn("object-fit:contain", theme.CSS + theme.LANDING_CSS)
 
 
 class TestAssets(unittest.TestCase):

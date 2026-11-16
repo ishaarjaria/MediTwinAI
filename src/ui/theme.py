@@ -536,8 +536,8 @@ html { scroll-behavior:smooth; }
 .lp-frame-bar { display:flex; align-items:center; gap:6px; padding:.65rem .95rem; background:__SURFACE_2__; border-bottom:1px solid __BORDER_SOFT__; }
 .lp-frame-bar i { width:9px; height:9px; border-radius:50%; background:__BORDER__; display:block; }
 .lp-frame-bar span { margin-left:.9rem; color:__FAINT__; font-size:.74rem; }
-.lp-frame img { width:100%; display:block; }
-.lp-frame::after { content:""; position:absolute; left:0; right:0; bottom:0; height:84px; pointer-events:none; background:linear-gradient(rgba(255,255,255,0), #FFFFFF); }
+.lp-shot { position:relative; width:100%; aspect-ratio:1200 / 750; background:#FFFFFF; }
+.lp-shot img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:block; }.lp-frame::after { content:""; position:absolute; left:0; right:0; bottom:0; height:84px; pointer-events:none; background:linear-gradient(rgba(255,255,255,0), #FFFFFF); }
 .lp-caption { color:__MUTED__; font-size:.82rem; margin:.9rem 0 1.4rem; }
 .lp-about { display:grid; grid-template-columns:1.1fr .9fr; gap:3.5rem; align-items:start; }
 .lp-fact { display:flex; gap:1rem; padding:1.05rem 0; border-top:1px solid __BORDER__; }
